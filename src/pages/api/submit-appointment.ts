@@ -196,39 +196,120 @@ async function submitToEnquireApi(
   
   if (!apiKey) {
     logger.error(`Missing Enquire API key for community: ${payload.CommunityName}`);
-    throw new Error('API configuration error');
+    throw new Error('API configuration error: No API key provided');
   }
 
   logger.info(`Submitting appointment request to Enquire API for ${payload.FirstName} ${payload.LastName} (Community: ${payload.CommunityName})`);
+  logger.debug(`API endpoint: ${endpoint}`, { 
+    communityName: payload.CommunityName,
+    hasApiKey: !!apiKey,
+    payloadFields: Object.keys(payload)
+  });
   
-  try {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify(payload),
-      // Add a reasonable timeout
-      signal: AbortSignal.timeout(10000),
-    });
+  // Maximum number of retries
+  const MAX_RETRIES = 1;
+  let retryCount = 0;
+  let lastError: Error | null = null;
 
-    if (!response.ok) {
-      // Log detailed error information
-      const errorText = await response.text();
-      logger.error(`Enquire API error for ${payload.CommunityName}: ${response.status} ${response.statusText}`, { errorText });
-      throw new Error(`API request failed with status ${response.status}`);
+  while (retryCount <= MAX_RETRIES) {
+    try {
+      // If this is a retry, log it
+      if (retryCount > 0) {
+        logger.info(`Retry attempt ${retryCount} for ${payload.CommunityName}`);
+      }
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // Use the Azure API Management header format instead of Bearer token
+          'Ocp-Apim-Subscription-Key': apiKey,
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(payload),
+        // Add a reasonable timeout
+        signal: AbortSignal.timeout(10000),
+      });
+
+      // Get response text for logging regardless of status
+      const responseText = await response.text();
+      
+      if (!response.ok) {
+        // Parse response text if it's JSON
+        let parsedError;
+        try {
+          parsedError = JSON.parse(responseText);
+        } catch (e) {
+          // Not JSON, use text as is
+          parsedError = responseText;
+        }
+
+        logger.error(`Enquire API error for ${payload.CommunityName}: ${response.status} ${response.statusText}`, { 
+          errorDetails: parsedError,
+          endpoint,
+          statusCode: response.status,
+          headers: Object.fromEntries(response.headers.entries())
+        });
+
+        // Check if this is an authentication error
+        if (response.status === 401 || response.status === 403 || 
+            (response.status === 400 && responseText.includes("subscription key"))) {
+          throw new Error(`API key rejected: The API key for ${payload.CommunityName} was not accepted. Please check your ENQUIRE_API_KEY environment variable.`);
+        }
+
+        // Only retry on server errors (5xx) or network issues
+        if (response.status >= 500 && retryCount < MAX_RETRIES) {
+          lastError = new Error(`API request failed with status ${response.status}`);
+          retryCount++;
+          // Wait before retrying (simple exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+          continue;
+        }
+
+        throw new Error(`API request failed with status ${response.status}: ${parsedError?.Message || responseText}`);
+      }
+
+      // Try to parse the response as JSON
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        logger.error(`Failed to parse Enquire API response as JSON for ${payload.CommunityName}`, { responseText });
+        throw new Error('Invalid response format from API');
+      }
+
+      logger.info(`Enquire API response received for ${payload.CommunityName}`, { 
+        createReturn: data.CreateReturn,
+        responseData: data
+      });
+      
+      return data as EnquireApiResponse;
+    } catch (error) {
+      // Store the error for potential retry
+      lastError = error instanceof Error ? error : new Error(String(error));
+      
+      // If this is a network error or timeout and we haven't exceeded retries
+      if ((error instanceof TypeError || error.name === 'AbortError') && retryCount < MAX_RETRIES) {
+        logger.warn(`Network error for ${payload.CommunityName}, will retry`, { error: lastError.message });
+        retryCount++;
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+        continue;
+      }
+      
+      // Log the error with all available context
+      logger.error(`Error submitting to Enquire API for ${payload.CommunityName}`, {
+        error: lastError.message,
+        stack: lastError.stack,
+        retryAttempts: retryCount
+      });
+      
+      throw lastError;
     }
-
-    const data = await response.json();
-    logger.info(`Enquire API response received for ${payload.CommunityName}`, { createReturn: data.CreateReturn });
-    return data as EnquireApiResponse;
-  } catch (error) {
-    // Log the error with all available context
-    logger.error(`Error submitting to Enquire API for ${payload.CommunityName}`, error);
-    throw error;
   }
+
+  // This should never happen, but TypeScript requires a return value
+  throw lastError || new Error('Unknown error occurred');
 }
 
 /**
@@ -321,7 +402,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Return an appropriate error response
     return res.status(500).json({
       success: false,
-      message: 'An error occurred while processing your request',
+      message: error instanceof Error ? error.message : 'An error occurred while processing your request',
     });
   }
 }
