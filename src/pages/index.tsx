@@ -29,7 +29,6 @@ export default function Home() {
         </h1>
         
         <AppointmentForm
-          apiKey={process.env.NEXT_PUBLIC_ENQUIRE_API_KEY || 'demo-key'}
           communityName={process.env.NEXT_PUBLIC_COMMUNITY_NAME || 'Demo Community'}
           onSubmitSuccess={handleSuccess}
           onSubmitFailure={handleError}

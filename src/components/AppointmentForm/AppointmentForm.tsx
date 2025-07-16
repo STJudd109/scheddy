@@ -12,10 +12,6 @@ import {
 } from '../../lib/constants';
 import { AppointmentFormData } from '../../types/enquire';
 
-// Import for API (will create later)
-// import createEnquireApi, { getSubmissionStatus } from '../../lib/api';
-// import { transformPayload, commonTransformers } from '../../lib/transformPayload';
-
 /**
  * Internal helper for consistent console-logging of errors originating
  * from this form.  Having a single place makes it easier to swap to a
@@ -28,10 +24,8 @@ const logFormError = (context: string, err: unknown): void => {
 
 // Props for the AppointmentForm component
 interface AppointmentFormProps {
-  // API and community configuration
-  apiKey: string;
+  // Community configuration
   communityName: string;
-  apiEndpoint?: string;
   redirectPath?: string;
   redirectDelay?: number;
   globalDuplicateCheck?: boolean;
@@ -71,9 +65,7 @@ const validationSchema = yup.object().shape({
  * A configurable form for senior living appointment requests that submits to the Enquire Solutions API.
  */
 const AppointmentForm: React.FC<AppointmentFormProps> = ({
-  apiKey,
   communityName,
-  apiEndpoint,
   redirectPath = DEFAULT_CONFIG.REDIRECT_PATH,
   redirectDelay = DEFAULT_CONFIG.REDIRECT_DELAY,
   globalDuplicateCheck = false,
@@ -122,44 +114,76 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
     }
   }, [errors]);
 
-  // Handle form submission (simplified for now)
+  // Handle form submission
   const onSubmit: SubmitHandler<AppointmentFormData> = async (data) => {
     try {
       setIsSubmitting(true);
       setSubmissionState('submitting');
       setErrorMessage('');
 
-      // This is a placeholder. In a real implementation, we would:
-      // 1. Transform data
-      // 2. Submit to API
-      // 3. Handle response
+      // Ensure community name is set
+      const formData = {
+        ...data,
+        CommunityName: communityName,
+        // Add the current URL for tracking purposes
+        SubmittedFrom: typeof window !== 'undefined' ? window.location.href : '',
+        // Add global duplicate check flag if needed
+        globalDuplicateCheck
+      };
       
-      console.log('[AppointmentForm] Submit initiated', data);
+      // Apply custom transformation if provided
+      const payloadToSubmit = beforeSubmitTransform 
+        ? beforeSubmitTransform(formData)
+        : formData;
       
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      console.log('[AppointmentForm] Submit initiated', payloadToSubmit);
       
-      // Mock successful submission
-      setSubmissionState('success');
-      console.log('[AppointmentForm] Submission success (mock)');
+      // Submit to our server-side API route
+      const response = await fetch('/api/submit-appointment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payloadToSubmit),
+      });
       
-      if (onSubmitSuccess) {
-        onSubmitSuccess({
-          CreateReturn: 1,
-          IndividualId: 123456,
-          LeadId: 789012
-        });
+      // Parse the response
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to submit appointment request');
       }
       
-      // Redirect after delay
-      setTimeout(() => {
-        window.location.href = redirectPath;
-      }, redirectDelay);
+      // Handle successful submission
+      if (result.success) {
+        setSubmissionState('success');
+        reset(); // Clear form
+        console.log('[AppointmentForm] Submission success', result);
+        
+        if (onSubmitSuccess) {
+          onSubmitSuccess(result.data);
+        }
+        
+        // Redirect after delay
+        if (redirectPath) {
+          setTimeout(() => {
+            window.location.href = redirectPath;
+          }, redirectDelay);
+        }
+      } else {
+        // API returned success: false
+        throw new Error(result.message || ERROR_MESSAGES.SUBMISSION_FAILED);
+      }
       
     } catch (error) {
       logFormError('submit', error);
       setSubmissionState('error');
-      setErrorMessage(ERROR_MESSAGES.SUBMISSION_FAILED);
+      
+      const errorMsg = error instanceof Error 
+        ? error.message 
+        : ERROR_MESSAGES.SUBMISSION_FAILED;
+      
+      setErrorMessage(errorMsg);
       
       if (onSubmitFailure) {
         onSubmitFailure(error);
