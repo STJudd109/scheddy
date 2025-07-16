@@ -3,45 +3,43 @@
   "buildCommand": "npm run build",
   "outputDirectory": "out",
   "framework": "nextjs",
-  "routes": [
-    {
-      "src": "/embed.js",
-      "headers": {
-        "Cache-Control": "public, max-age=31536000, immutable"
-      },
-      "continue": true
-    },
-    {
-      "src": "/embed\\.(.*)\\.js",
-      "headers": {
-        "Cache-Control": "public, max-age=31536000, immutable"
-      },
-      "continue": true
-    },
-    {
-      "src": "/embed\\.(.*)\\.css",
-      "headers": {
-        "Cache-Control": "public, max-age=31536000, immutable"
-      },
-      "continue": true
-    },
-    {
-      "src": "/(.*)\\.(.*)$",
-      "headers": {
-        "Cache-Control": "public, max-age=604800"
-      },
-      "continue": true
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/404.html",
-      "status": 404
-    }
-  ],
   "headers": [
+    {
+      "source": "/embed.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/embed.(.*)\.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/embed.(.*)\.css",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)\.(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=604800"
+        }
+      ]
+    },
     {
       "source": "/(.*)",
       "headers": [
@@ -67,5 +65,10 @@
         }
       ]
     }
-  ]
+  ],
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/404.html", "has": [{ "type": "header", "key": "x-vercel-skip-asset", "value": "1" }] }
+  ],
+  "trailingSlash": false,
+  "cleanUrls": true
 }
