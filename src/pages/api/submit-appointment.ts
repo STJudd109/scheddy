@@ -284,16 +284,28 @@ async function submitToEnquireApi(
       });
       
       return data as EnquireApiResponse;
-    } catch (error) {
-      // Store the error for potential retry
+    } catch (error: unknown) {
+      // Normalise error to an Error instance for consistent handling
       lastError = error instanceof Error ? error : new Error(String(error));
-      
-      // If this is a network error or timeout and we haven't exceeded retries
-      if ((error instanceof TypeError || error.name === 'AbortError') && retryCount < MAX_RETRIES) {
-        logger.warn(`Network error for ${payload.CommunityName}, will retry`, { error: lastError.message });
-        retryCount++;
-        // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+
+      // Determine if this is a network-type error we should retry
+      const isAbortError =
+        typeof (error as any)?.name === 'string' &&
+        (error as any).name === 'AbortError';
+
+      if (
+        (error instanceof TypeError || isAbortError) &&
+        retryCount < MAX_RETRIES
+      ) {
+        logger.warn(
+          `Network error for ${payload.CommunityName}, will retry`,
+          { error: lastError.message }
+        );
+        retryCount += 1;
+        // Simple exponential backoff
+        await new Promise((resolve) =>
+          setTimeout(resolve, 1000 * retryCount)
+        );
         continue;
       }
       
