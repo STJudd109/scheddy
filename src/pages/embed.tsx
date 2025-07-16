@@ -21,6 +21,15 @@ export default function EmbedPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [initialized, setInitialized] = useState(false);
   
+  // ---------------------------------------------------------------------------
+  // Cloudflare Turnstile
+  // ---------------------------------------------------------------------------
+  // If you set NEXT_PUBLIC_TURNSTILE_SITE_KEY in your environment the embedded
+  // form will automatically display the Turnstile widget and include the token
+  // in the submission payload.  When the variable is **not** defined, the form
+  // works normally without additional friction.
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
   // Parse query parameters
   const {
     community,
@@ -202,6 +211,7 @@ export default function EmbedPage() {
         <AppointmentForm
           communityName={sanitizedCommunity}
           theme={theme}
+          turnstileKey={turnstileSiteKey}
           onSubmitSuccess={handleFormSuccess}
           onSubmitFailure={handleFormError}
           // Pass the referrer URL if available

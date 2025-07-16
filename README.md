@@ -52,6 +52,35 @@ NEXT_PUBLIC_COMMUNITY_NAME=Your Community Name   # required
 # start with `NEXT_PUBLIC_` – these are embedded in client-side bundles.
 ```
 
+### Cloudflare Turnstile (optional)
+
+This project supports [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/) –  
+an invisible, privacy-friendly CAPTCHA alternative that blocks bots without
+annoying your residents (no puzzles, no traffic-lights).
+
+1. Create a *Turnstile* site in the Cloudflare dashboard  
+2. Copy the **Site key** and **Secret key**  
+3. Add them to **both** Vercel *Environment Variables* and your local
+   `.env.local` file:
+
+```bash
+# Public key – safe to expose in the browser
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=0xAAAAAA...
+
+# Secret key – keep on the server only
+TURNSTILE_SECRET_KEY=0xBBBBBB...
+```
+
+Turnstile is completely **optional**:
+
+* If **either** key is missing the widget is hidden and the form works
+  as before (handy for local development).  
+* When both keys are present the widget appears above the submit button and the
+  server-side API route verifies each token before touching your Enquire quota.  
+
+No extra code changes are required—the `AppointmentForm` component and API
+route automatically detect the keys and enable protection.
+
 ## Documentation
 
 Extensive “living” docs are included in the codebase:

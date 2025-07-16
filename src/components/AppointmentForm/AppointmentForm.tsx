@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm, Controller, SubmitHandler } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -22,6 +22,25 @@ const logFormError = (context: string, err: unknown): void => {
   console.error(`[AppointmentForm] ${context}`, err);
 };
 
+// TypeScript declarations for Cloudflare Turnstile
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (
+        container: string, 
+        options: {
+          sitekey: string;
+          callback: (token: string) => void;
+          'expired-callback': () => void;
+          theme?: 'light' | 'dark' | 'auto';
+          [key: string]: any;
+        }
+      ) => string;
+      reset: (widgetId: string) => void;
+    };
+  }
+}
+
 // Props for the AppointmentForm component
 interface AppointmentFormProps {
   // Community configuration
@@ -32,6 +51,9 @@ interface AppointmentFormProps {
   
   // Theming/branding
   theme?: Partial<Theme>;
+  
+  // Turnstile configuration
+  turnstileKey?: string;
   
   // Custom hooks
   onSubmitSuccess?: (data: any) => void;
@@ -70,6 +92,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   redirectDelay = DEFAULT_CONFIG.REDIRECT_DELAY,
   globalDuplicateCheck = false,
   theme: customTheme,
+  turnstileKey,
   onSubmitSuccess,
   onSubmitFailure,
   beforeSubmitTransform,
@@ -77,6 +100,12 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   // Get theme from context or use provided theme
   const defaultTheme = useTheme();
   const theme = { ...defaultTheme, ...customTheme };
+  
+  // Reference for Turnstile container
+  const turnstileRef = useRef<HTMLDivElement>(null);
+  
+  // State for Turnstile token
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   // Form state using React Hook Form
   const {
@@ -113,10 +142,79 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
       logFormError('validation-error', errors);
     }
   }, [errors]);
+  
+  // Load Turnstile script and initialize
+  useEffect(() => {
+    if (!turnstileRef.current || !turnstileKey) return;
+
+    // Reset token when form is reset
+    if (submissionState === 'idle') {
+      setTurnstileToken(null);
+    }
+
+    // Check if script is already loaded
+    const existingScript = document.getElementById('cf-turnstile-script');
+    if (existingScript) {
+      // If already loaded, just render the widget
+      if (window.turnstile) {
+        renderTurnstile();
+      }
+      return;
+    }
+
+    // Load the Turnstile script
+    const script = document.createElement('script');
+    script.id = 'cf-turnstile-script';
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+    script.async = true;
+    script.onload = renderTurnstile;
+    document.head.appendChild(script);
+
+    // Cleanup
+    return () => {
+      if (window.turnstile && turnstileRef.current) {
+        // Remove any existing widgets
+        const container = document.getElementById('cf-turnstile');
+        if (container) {
+          container.innerHTML = '';
+        }
+      }
+    };
+  }, [turnstileKey, submissionState]);
+
+  // Function to render the Turnstile widget
+  const renderTurnstile = () => {
+    if (!window.turnstile || !turnstileRef.current || !turnstileKey) return;
+
+    // Clear any existing widgets
+    const container = document.getElementById('cf-turnstile');
+    if (container) {
+      container.innerHTML = '';
+    }
+
+    // Render the widget
+    window.turnstile.render('#cf-turnstile', {
+      sitekey: turnstileKey,
+      callback: (token: string) => {
+        setTurnstileToken(token);
+      },
+      'expired-callback': () => {
+        setTurnstileToken(null);
+      },
+      theme: theme.primaryColor ? 'light' : 'auto',
+    });
+  };
 
   // Handle form submission
   const onSubmit: SubmitHandler<AppointmentFormData> = async (data) => {
     try {
+      // Check if Turnstile is required but not completed
+      if (turnstileKey && !turnstileToken) {
+        setSubmissionState('error');
+        setErrorMessage('Please complete the security check');
+        return;
+      }
+
       setIsSubmitting(true);
       setSubmissionState('submitting');
       setErrorMessage('');
@@ -128,7 +226,9 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
         // Add the current URL for tracking purposes
         SubmittedFrom: typeof window !== 'undefined' ? window.location.href : '',
         // Add global duplicate check flag if needed
-        globalDuplicateCheck
+        globalDuplicateCheck,
+        // Add Turnstile token if available
+        turnstileToken: turnstileToken || undefined,
       };
       
       // Apply custom transformation if provided
@@ -425,11 +525,27 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
             )}
           </div>
           
+          {/* Cloudflare Turnstile */}
+          {turnstileKey && (
+            <div className="form-group turnstile-container mt-4">
+              <div 
+                id="cf-turnstile" 
+                ref={turnstileRef}
+                className="flex justify-center"
+              ></div>
+              {submissionState === 'error' && !turnstileToken && (
+                <span className="error-text text-center block mt-2" role="alert">
+                  Please complete the security check
+                </span>
+              )}
+            </div>
+          )}
+          
           {/* Submit Button */}
           <div className="form-group submit-container mt-6">
             <button 
               type="submit" 
-              disabled={isSubmitting || formSubmitting}
+              disabled={isSubmitting || formSubmitting || (turnstileKey && !turnstileToken)}
               className="w-full py-3 px-4 font-medium text-white rounded-md transition-colors hover:opacity-90 disabled:opacity-70 disabled:cursor-not-allowed"
               style={{ backgroundColor: theme.primaryColor }}
             >

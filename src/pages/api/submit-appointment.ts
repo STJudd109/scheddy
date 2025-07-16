@@ -9,6 +9,59 @@ import { createLogger } from '../../lib/logger';
 // Create a logger instance for this API route
 const logger = createLogger('api:submit-appointment');
 
+/**
+ * --------------------------------------------------------------------
+ * Cloudflare Turnstile ‑ optional anti-spam verification
+ * --------------------------------------------------------------------
+ *
+ * If the environment variable `TURNSTILE_SECRET_KEY` is present the API
+ * will validate the `turnstileToken` provided by the client.  When the
+ * secret is **not** configured the check is skipped so local/dev usage
+ * is friction-free.
+ *
+ * Required environment variables:
+ *   • TURNSTILE_SECRET_KEY   – secret provided by Cloudflare dashboard
+ *
+ * The client must send the token in the body:
+ *   { ..., "turnstileToken": "<token-from-widget>" }
+ */
+const TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY ?? '';
+
+async function verifyTurnstileToken(token: string | undefined, ip?: string) {
+  // Skip if secret key not configured
+  if (!TURNSTILE_SECRET_KEY) {
+    logger.debug('Turnstile skipped – no secret key configured');
+    return true;
+  }
+
+  if (!token) {
+    logger.warn('Turnstile token missing in request');
+    return false;
+  }
+
+  try {
+    const params = new URLSearchParams();
+    params.append('secret', TURNSTILE_SECRET_KEY);
+    params.append('response', token);
+    if (ip) params.append('remoteip', ip);
+
+    const resp = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      body: params,
+    });
+    const data = (await resp.json()) as { success: boolean; 'error-codes'?: string[] };
+
+    if (!data.success) {
+      logger.warn('Turnstile verification failed', data['error-codes']);
+    }
+    return data.success;
+  } catch (err) {
+    logger.error('Error calling Turnstile verify endpoint', err);
+    // Fail-closed (treat as failed verification)
+    return false;
+  }
+}
+
 // Validation patterns (duplicated from constants to keep API route self-contained)
 const VALIDATION_PATTERNS = {
   NAME: /^[a-zA-Z\s\-'.]+$/,
@@ -355,10 +408,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     // Extract community name for logging
-    const { CommunityName, FirstName, LastName } = req.body;
+    const { CommunityName, FirstName, LastName, turnstileToken } = req.body;
     
     // Log the incoming request with community information
     logger.info(`Received appointment request for ${FirstName} ${LastName} (Community: ${CommunityName || 'Not specified'})`);
+
+    /* ---------------------------------------------------------------
+     * Turnstile verification (if enabled)
+     * ------------------------------------------------------------- */
+    const remoteIp = req.headers['x-forwarded-for']?.toString().split(',')[0];
+    const turnstileOk = await verifyTurnstileToken(turnstileToken, remoteIp);
+    if (!turnstileOk) {
+      return res.status(400).json({
+        success: false,
+        message: 'Security check failed. Please refresh the page and try again.',
+      });
+    }
 
     // Validate the request body
     const validation = validateAppointmentData(req.body);
