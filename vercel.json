@@ -14,7 +14,7 @@
       ]
     },
     {
-      "source": "/embed.(.*)\.js",
+      "source": "/embed.(.*)\\.js",
       "headers": [
         {
           "key": "Cache-Control",
@@ -23,7 +23,7 @@
       ]
     },
     {
-      "source": "/embed.(.*)\.css",
+      "source": "/embed.(.*)\\.css",
       "headers": [
         {
           "key": "Cache-Control",
@@ -32,7 +32,7 @@
       ]
     },
     {
-      "source": "/(.*)\.(.*)",
+      "source": "/(.*)\\.(.*)",
       "headers": [
         {
           "key": "Cache-Control",
