@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 80" fill="none">
+  <!-- House/Building Icon -->
+  <path d="M40 20L60 10L80 20V60H40V20Z" fill="#0066cc" />
+  <path d="M50 35H70V60H50V35Z" fill="white" />
+  <path d="M55 45H65V60H55V45Z" fill="#0066cc" />
+  
+  <!-- Roof decoration -->
+  <path d="M60 5L65 10H55L60 5Z" fill="#0066cc" />
+  
+  <!-- Text -->
+  <text x="90" y="35" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#0066cc">Senior Living</text>
+  <text x="90" y="55" font-family="Arial, sans-serif" font-size="14" fill="#0066cc">Appointment Portal</text>
+  
+  <!-- Decorative Line -->
+  <line x1="40" y1="65" x2="200" y2="65" stroke="#0066cc" stroke-width="2" />
+  
+  <!-- Small decorative elements -->
+  <circle cx="35" cy="40" r="3" fill="#0066cc" />
+  <circle cx="35" cy="50" r="3" fill="#0066cc" />
+  <circle cx="85" cy="65" r="3" fill="#0066cc" />
+  <circle cx="155" cy="65" r="3" fill="#0066cc" />
+</svg>

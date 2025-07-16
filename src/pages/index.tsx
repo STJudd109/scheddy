@@ -1,0 +1,44 @@
+import React from 'react';
+import Head from 'next/head';
+import AppointmentForm from '../components/AppointmentForm/AppointmentForm';
+
+/**
+ * Home page with appointment form demo
+ */
+export default function Home() {
+  // Sample form handlers
+  const handleSuccess = (data: any) => {
+    console.log('Form submitted successfully:', data);
+  };
+
+  const handleError = (error: any) => {
+    console.error('Form submission error:', error);
+  };
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <Head>
+        <title>Appointment Request Form</title>
+        <meta name="description" content="Request an appointment at our senior living community" />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
+      <main className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold text-center mb-8 text-primary">
+          Senior Living Appointment Request
+        </h1>
+        
+        <AppointmentForm
+          apiKey={process.env.NEXT_PUBLIC_ENQUIRE_API_KEY || 'demo-key'}
+          communityName={process.env.NEXT_PUBLIC_COMMUNITY_NAME || 'Demo Community'}
+          onSubmitSuccess={handleSuccess}
+          onSubmitFailure={handleError}
+        />
+      </main>
+
+      <footer className="mt-12 text-center text-gray-500 text-sm">
+        <p>© {new Date().getFullYear()} Senior Living Appointment Form</p>
+      </footer>
+    </div>
+  );
+}
