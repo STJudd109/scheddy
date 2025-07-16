@@ -1,11 +1,33 @@
 import React from 'react';
 import Head from 'next/head';
 import AppointmentForm from '../components/AppointmentForm/AppointmentForm';
+import { useRouter } from 'next/router';
 
 /**
  * Home page with appointment form demo
  */
 export default function Home() {
+  const router = useRouter();
+
+  // Wait for router to be ready to avoid hydration issues
+  const [ready, setReady] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!router.isReady) return;
+
+    // Redirect to cleaner /embed URL preserving query params
+    if (typeof window !== 'undefined' && window.location.search) {
+      router.replace(`/embed${window.location.search}`);
+      return;
+    }
+
+    setReady(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady]);
+
+  // Extract community param (if any)
+  const { community } = router.query;
+
   // Sample form handlers
   const handleSuccess = (data: any) => {
     console.log('Form submitted successfully:', data);
@@ -29,7 +51,11 @@ export default function Home() {
         </h1>
         
         <AppointmentForm
-          communityName={process.env.NEXT_PUBLIC_COMMUNITY_NAME || 'Demo Community'}
+          communityName={
+            typeof community === 'string' && community.trim()
+              ? community
+              : process.env.NEXT_PUBLIC_COMMUNITY_NAME || 'Demo Community'
+          }
           onSubmitSuccess={handleSuccess}
           onSubmitFailure={handleError}
         />

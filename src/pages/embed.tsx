@@ -29,7 +29,38 @@ export default function EmbedPage() {
     logoUrl,
     buttonText,
     referrer,
-  } = router.query;
+    // capture any unnamed query param as potential community code
+    ...restParams
+  } = router.query as Record<string, string | string[] | undefined>;
+
+  /**
+   * Resolve community value.
+   * Priority:
+   *  1) explicit `community` query key
+   *  2) key–only query string (`/?SOME_CODE`)
+   */
+  const resolvedCommunity = React.useMemo(() => {
+    if (typeof community === 'string' && community.trim()) {
+      return community.trim();
+    }
+
+    // Look for a "naked" query key that holds the code
+    const unnamedKeys = Object.keys(restParams).filter(
+      (k) => typeof restParams[k] === 'undefined' || restParams[k] === ''
+    );
+
+    if (unnamedKeys.length === 1) {
+      return unnamedKeys[0].trim();
+    }
+
+    return '';
+  }, [community, restParams]);
+
+  // Sanitise community value to prevent XSS / malformed input
+  const sanitizedCommunity = React.useMemo(() => {
+    const clean = decodeURIComponent(resolvedCommunity).replace(/[^\w\s-]/g, '').trim();
+    return clean;
+  }, [resolvedCommunity]);
 
   // Only run after router is ready and query params are available
   useEffect(() => {
@@ -128,6 +159,16 @@ export default function EmbedPage() {
     );
   }
 
+  // Additional validation
+  if (!sanitizedCommunity) {
+    logger.error('Invalid community parameter format', { value: resolvedCommunity });
+    return (
+      <div className="p-4 text-center text-red-600">
+        Error: Community parameter is invalid
+      </div>
+    );
+  }
+
   return (
     <>
       <Head>
@@ -159,7 +200,7 @@ export default function EmbedPage() {
       
       <div ref={containerRef} className="embed-container">
         <AppointmentForm
-          communityName={community as string}
+          communityName={sanitizedCommunity}
           theme={theme}
           onSubmitSuccess={handleFormSuccess}
           onSubmitFailure={handleFormError}
