@@ -23,6 +23,11 @@ npm run dev
 
 ## Configuration
 
+> **Prerequisites**
+> * Node ≥ 16 and npm ≥ 8  
+> * A valid **Enquire Solutions** API key  
+> * (Optional) per-community API keys for white-label deployments  
+
 1. Copy the example file and adjust values:
 
 ```bash
@@ -49,7 +54,36 @@ NEXT_PUBLIC_COMMUNITY_NAME=Your Community Name   # required
 
 ## Documentation
 
-See project files for detailed documentation and usage examples.
+Extensive “living” docs are included in the codebase:
+
+| Topic | Where |
+|-------|-------|
+| **Component props** | `src/components/AppointmentForm/AppointmentForm.tsx` |
+| **Embed API** | `public/embed.js` – JSDoc at top of file |
+| **Server route** | `src/pages/api/submit-appointment.ts` |
+| **Demo playground** | `http://localhost:3000/demo` after `npm run dev` |
+
+Below is a condensed reference of the most-used patterns.
+
+---
+
+## Architecture & Security
+
+```
+ Browser <iframe/embed.js>
+        │  (POST /api/submit-appointment)
+        ▼
+ Next.js API Route ─▶ Enquire Solutions API
+```
+
+* The **client bundle never contains secrets** – they stay on the server.  
+* The `/api/submit-appointment` route validates, transforms and forwards data.  
+* Per-community API credentials can override the default key for true
+  white-label isolation.  
+* All errors funnel through a central logger (`logger.ts`) enabling future
+  Sentry / Datadog integration with one line of code.  
+
+---
 
 ## Multi-Community & White-Label Deployment
 
@@ -117,18 +151,13 @@ host sites to hook into analytics or show custom confirmation modals.
 
 ## Security & API Architecture
 
-The browser no longer talks directly to Enquire.  
-Instead, form data is POSTed to **`/api/submit-appointment`**, a server-side
-Next.js API route that:
+See “Architecture & Security” above for the full flow.  
+Key points:
 
-1. Validates and transforms the payload  
-2. Reads `ENQUIRE_API_KEY` from the *server* environment (never sent to the
-   client)  
-3. Calls the Enquire Solutions endpoint and returns a minimal response to
-   the browser  
-
-This design keeps sensitive credentials out of the client bundle and allows
-centralised error handling, rate-limiting or additional security checks.
+1. **Zero-exposure** of API keys – only the server knows them.  
+2. **Community whitelist** ensures rogue sites cannot spam your account.  
+3. Supports **per-community API keys & endpoints** for granular control.  
+4. SSR-friendly and deploy-ready for Vercel/Netlify/Docker.  
 
 ## Error Logging
 
@@ -141,3 +170,43 @@ The project ships with a lightweight logger:
 
 Validation and submission errors inside **`AppointmentForm`** are also logged
 with contextual information to aid debugging.
+
+---
+
+## Advanced Customisation
+
+| Area | How |
+|------|-----|
+| **Fields / layout** | Fork `AppointmentForm.tsx` or inject via `children` prop |
+| **Validation rules** | Update `validationSchema` (Yup) inside component |
+| **Styling** | Override CSS variables (`--primary-color`, `--secondary-color`) or supply a Tailwind config |
+| **Analytics hooks** | Subscribe to `formSubmitted` / `formError` post-messages, or add callbacks in `AppointmentForm` props |
+| **Internationalisation** | Pass translated labels via props or load strings from CMS |
+
+---
+
+## Development & Contribution
+
+1. `npm i && npm run dev` to start on `http://localhost:3000`.  
+2. Lint & format before committing: `npm run lint && npm run format`.  
+3. Write tests in `__tests__/` (Jest + React Testing Library).  
+4. Open a PR following the conventional-commit format (`feat:`, `fix:` …).  
+
+### Helpful scripts
+
+| Script | Purpose |
+|--------|---------|
+| `dev` | local dev with hot-reload |
+| `build` | production build |
+| `export` | static export (`out/`) for CDN hosting |
+| `analyze` | bundle-analyzer report |
+
+---
+
+## Production Checklist
+
+- [ ] Add real domain to `EMBED_BASE_URL`  
+- [ ] Provide HTTPS certs (Auto via Vercel)  
+- [ ] Populate `ALLOWED_COMMUNITIES` whitelist  
+- [ ] Set `NODE_ENV=production` and disable mock mode  
+- [ ] Hook remote logger (Sentry / Datadog) via `logger.ts`  
