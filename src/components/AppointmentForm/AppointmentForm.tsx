@@ -16,6 +16,16 @@ import { AppointmentFormData } from '../../types/enquire';
 // import createEnquireApi, { getSubmissionStatus } from '../../lib/api';
 // import { transformPayload, commonTransformers } from '../../lib/transformPayload';
 
+/**
+ * Internal helper for consistent console-logging of errors originating
+ * from this form.  Having a single place makes it easier to swap to a
+ * remote logger later (Datadog, Sentry, etc.).
+ */
+const logFormError = (context: string, err: unknown): void => {
+  // eslint-disable-next-line no-console
+  console.error(`[AppointmentForm] ${context}`, err);
+};
+
 // Props for the AppointmentForm component
 interface AppointmentFormProps {
   // API and community configuration
@@ -102,6 +112,16 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
+  /* ------------------------------------------------------------------
+   * Debug / Dev – log validation errors whenever they appear so that
+   * implementers can see what went wrong without digging into UI.
+   * ----------------------------------------------------------------- */
+  useEffect(() => {
+    if (Object.keys(errors).length > 0) {
+      logFormError('validation-error', errors);
+    }
+  }, [errors]);
+
   // Handle form submission (simplified for now)
   const onSubmit: SubmitHandler<AppointmentFormData> = async (data) => {
     try {
@@ -114,13 +134,14 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
       // 2. Submit to API
       // 3. Handle response
       
-      console.log('Form submitted with data:', data);
+      console.log('[AppointmentForm] Submit initiated', data);
       
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       // Mock successful submission
       setSubmissionState('success');
+      console.log('[AppointmentForm] Submission success (mock)');
       
       if (onSubmitSuccess) {
         onSubmitSuccess({
@@ -136,7 +157,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
       }, redirectDelay);
       
     } catch (error) {
-      console.error('Error submitting form:', error);
+      logFormError('submit', error);
       setSubmissionState('error');
       setErrorMessage(ERROR_MESSAGES.SUBMISSION_FAILED);
       
