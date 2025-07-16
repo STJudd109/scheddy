@@ -9,6 +9,7 @@ A lightweight, brand-ready React widget for scheduling appointments at senior li
 - Customizable branding and theming
 - Form validation and error handling
 - Success feedback and redirection
+- Single backend that can serve **multiple communities** (white-label friendly)
 
 ## Quick Start
 
@@ -49,6 +50,70 @@ NEXT_PUBLIC_COMMUNITY_NAME=Your Community Name   # required
 ## Documentation
 
 See project files for detailed documentation and usage examples.
+
+## Multi-Community & White-Label Deployment
+
+Need to use the *same* deployment across dozens of partner sites?  
+The widget accepts the community name (and optional branding) at **runtime** and
+submits to the correct Enquire account while your API key stays on the server.
+
+### Server-side set-up
+
+1. Add each community to the allow-list or numbered variables in `.env.local`
+   ```
+   ALLOWED_COMMUNITIES=Sunny Acres Assisted Living,Oakwood Estates,Harbor Lights
+
+   # community-specific credentials (optional, falls back to defaults)
+   ENQUIRE_API_KEY_SUNNY_ACRES_ASSISTED_LIVING=abc123
+   ENQUIRE_API_KEY_OAKWOOD_ESTATES=def456
+   ```
+2. Redeploy – the `/api/submit-appointment` route will pick the right key based
+   on the incoming `CommunityName` field.
+
+### Embedding the form
+
+Drop the helper script on **any** website.  
+The only required attribute is `data-community`.
+
+```html
+<!-- On partner-site.com -->
+<script
+  src="https://forms.your-domain.com/embed.js"
+  data-community="Sunny Acres Assisted Living"
+  data-color="#0066cc"
+  data-target="#form-here">
+</script>
+
+<div id="form-here"></div>
+```
+
+Want a different site to show Oakwood Estates?
+
+```html
+<script
+  src="https://forms.your-domain.com/embed.js"
+  data-community="Oakwood Estates"
+  data-color="#2c5e2e"
+  data-logo="https://cdn.example.com/oakwood/logo.svg"
+  data-target="#widget">
+</script>
+<div id="widget"></div>
+```
+
+### Embed-script parameters
+
+| Attribute             | Required | Purpose                                              |
+|-----------------------|----------|------------------------------------------------------|
+| `data-community`      | Yes      | Exact community name as defined in Enquire           |
+| `data-color`          | No       | Primary brand colour (hex)                           |
+| `data-secondary-color`| No       | Secondary / background colour                        |
+| `data-logo`           | No       | URL to a logo shown at the top of the form           |
+| `data-button-text`    | No       | Override submit-button label                         |
+| `data-target`         | No       | CSS selector of the container (defaults to `body`)   |
+| `data-height`/`width` | No       | Explicit iframe dimensions (otherwise auto-resize)   |
+
+The embed JS dispatches `formSubmitted` and `formError` post-messages, allowing
+host sites to hook into analytics or show custom confirmation modals.
 
 ## Security & API Architecture
 

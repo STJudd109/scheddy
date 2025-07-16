@@ -1,0 +1,223 @@
+/**
+ * Appointment Form Embed Script
+ * 
+ * This script allows embedding the appointment request form on any website
+ * with customizable parameters for different communities and branding.
+ * 
+ * Usage:
+ * <script 
+ *   src="https://your-form-domain.com/embed.js" 
+ *   data-community="Community Name"
+ *   data-color="#0066cc"
+ *   data-target="#appointment-form-container"
+ * ></script>
+ * 
+ * <div id="appointment-form-container"></div>
+ */
+
+(function() {
+  // Logging utility for the embed script
+  const logger = {
+    prefix: '[AppointmentForm]',
+    info: function(message, ...args) {
+      console.info(`${this.prefix} ${message}`, ...args);
+    },
+    error: function(message, ...args) {
+      console.error(`${this.prefix} ${message}`, ...args);
+    },
+    warn: function(message, ...args) {
+      console.warn(`${this.prefix} ${message}`, ...args);
+    }
+  };
+
+  // Get current script element
+  const currentScript = document.currentScript || (function() {
+    const scripts = document.getElementsByTagName('script');
+    return scripts[scripts.length - 1];
+  })();
+
+  // Configuration options with defaults
+  const config = {
+    // Required parameters
+    communityName: currentScript.getAttribute('data-community') || '',
+    
+    // Optional parameters with defaults
+    target: currentScript.getAttribute('data-target') || '#appointment-form',
+    primaryColor: currentScript.getAttribute('data-color') || '#0066cc',
+    secondaryColor: currentScript.getAttribute('data-secondary-color') || '#f8f9fa',
+    logoUrl: currentScript.getAttribute('data-logo') || '',
+    buttonText: currentScript.getAttribute('data-button-text') || 'Request Appointment',
+    height: currentScript.getAttribute('data-height') || 'auto',
+    width: currentScript.getAttribute('data-width') || '100%',
+    
+    // Advanced options
+    baseUrl: currentScript.getAttribute('data-base-url') || getBaseUrl(),
+    iframeMode: currentScript.getAttribute('data-iframe-mode') !== 'false',
+    autoResize: currentScript.getAttribute('data-auto-resize') !== 'false',
+    debug: currentScript.getAttribute('data-debug') === 'true'
+  };
+
+  // Allow overriding config with global object
+  if (window.AppointmentFormConfig) {
+    Object.assign(config, window.AppointmentFormConfig);
+  }
+
+  // Validate required parameters
+  if (!config.communityName) {
+    return logger.error('Missing required parameter: data-community');
+  }
+
+  // Get base URL from script src if not specified
+  function getBaseUrl() {
+    const scriptSrc = currentScript.src;
+    const urlObj = new URL(scriptSrc);
+    return `${urlObj.protocol}//${urlObj.host}`;
+  }
+
+  // Build URL with query parameters
+  function buildFormUrl() {
+    const url = new URL('/embed', config.baseUrl);
+    
+    // Add parameters to URL
+    url.searchParams.append('community', encodeURIComponent(config.communityName));
+    
+    if (config.primaryColor) {
+      url.searchParams.append('primaryColor', encodeURIComponent(config.primaryColor));
+    }
+    
+    if (config.secondaryColor) {
+      url.searchParams.append('secondaryColor', encodeURIComponent(config.secondaryColor));
+    }
+    
+    if (config.logoUrl) {
+      url.searchParams.append('logoUrl', encodeURIComponent(config.logoUrl));
+    }
+    
+    if (config.buttonText) {
+      url.searchParams.append('buttonText', encodeURIComponent(config.buttonText));
+    }
+    
+    // Add referrer information
+    url.searchParams.append('referrer', encodeURIComponent(window.location.href));
+    
+    return url.toString();
+  }
+
+  // Create iframe element
+  function createIframe() {
+    const iframe = document.createElement('iframe');
+    iframe.src = buildFormUrl();
+    iframe.style.width = config.width;
+    iframe.style.height = config.height;
+    iframe.style.border = 'none';
+    iframe.style.overflow = 'hidden';
+    iframe.title = `Appointment Request Form for ${config.communityName}`;
+    iframe.id = 'appointment-form-iframe';
+    iframe.setAttribute('loading', 'lazy');
+    iframe.setAttribute('scrolling', 'no');
+    
+    // Add ARIA attributes for accessibility
+    iframe.setAttribute('role', 'form');
+    iframe.setAttribute('aria-label', `Appointment Request Form for ${config.communityName}`);
+    
+    return iframe;
+  }
+
+  // Initialize the form
+  function init() {
+    try {
+      if (config.debug) {
+        logger.info('Initializing with config:', config);
+      }
+      
+      // Find target element
+      const targetSelector = config.target;
+      const targetElement = document.querySelector(targetSelector);
+      
+      if (!targetElement) {
+        return logger.error(`Target element not found: ${targetSelector}`);
+      }
+      
+      // Create and append iframe
+      const iframe = createIframe();
+      targetElement.appendChild(iframe);
+      
+      // Set up message listener for iframe communication
+      if (config.autoResize) {
+        window.addEventListener('message', handleIframeMessage);
+      }
+      
+      logger.info(`Form embedded successfully for ${config.communityName}`);
+    } catch (error) {
+      logger.error('Failed to initialize form:', error);
+    }
+  }
+
+  // Handle messages from iframe for resizing
+  function handleIframeMessage(event) {
+    try {
+      // Verify origin
+      if (event.origin !== config.baseUrl) {
+        return;
+      }
+      
+      const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+      
+      // Handle height updates
+      if (data.type === 'resize' && data.height) {
+        const iframe = document.getElementById('appointment-form-iframe');
+        if (iframe) {
+          iframe.style.height = `${data.height}px`;
+          if (config.debug) {
+            logger.info(`Resized iframe to ${data.height}px`);
+          }
+        }
+      }
+      
+      // Handle form submission events
+      if (data.type === 'formSubmitted') {
+        if (config.onSubmit && typeof config.onSubmit === 'function') {
+          config.onSubmit(data.data);
+        }
+        logger.info('Form submitted successfully');
+      }
+      
+      // Handle form errors
+      if (data.type === 'formError') {
+        if (config.onError && typeof config.onError === 'function') {
+          config.onError(data.error);
+        }
+        logger.warn('Form submission error:', data.error);
+      }
+    } catch (error) {
+      logger.error('Error handling iframe message:', error);
+    }
+  }
+
+  // Expose public API
+  window.AppointmentForm = {
+    config: config,
+    reload: function(newConfig) {
+      // Update config with new values
+      if (newConfig) {
+        Object.assign(config, newConfig);
+      }
+      
+      // Remove existing iframe
+      const iframe = document.getElementById('appointment-form-iframe');
+      if (iframe && iframe.parentNode) {
+        iframe.parentNode.removeChild(iframe);
+      }
+      
+      // Reinitialize
+      init();
+    }
+  };
+
+  // Initialize when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();

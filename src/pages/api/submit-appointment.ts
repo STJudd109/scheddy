@@ -13,6 +13,77 @@ const VALIDATION_PATTERNS = {
 };
 
 /**
+ * Get a list of allowed communities from environment variables
+ * This serves as a security measure to prevent unauthorized communities
+ * 
+ * @returns Array of allowed community names or null if no whitelist is configured
+ */
+function getAllowedCommunities(): string[] | null {
+  // Check if we have a whitelist of communities
+  const communitiesStr = process.env.ALLOWED_COMMUNITIES;
+  if (communitiesStr) {
+    return communitiesStr.split(',').map(c => c.trim());
+  }
+  
+  // Check for numbered community environment variables (COMMUNITY_1_NAME, COMMUNITY_2_NAME, etc.)
+  const communities: string[] = [];
+  for (let i = 1; i <= 20; i++) {
+    const communityName = process.env[`COMMUNITY_${i}_NAME`];
+    if (communityName) {
+      communities.push(communityName);
+    } else if (i > 3) {
+      // Stop checking after first gap (optimization for when only a few are defined)
+      break;
+    }
+  }
+  
+  return communities.length > 0 ? communities : null;
+}
+
+/**
+ * Get API configuration for a specific community
+ * 
+ * @param communityName The name of the community
+ * @returns API configuration for the community
+ */
+function getCommunityApiConfig(communityName: string): {
+  apiKey: string | null;
+  endpoint: string;
+  globalDuplicateCheck: boolean;
+} {
+  // Normalize community name for environment variable lookup
+  // Replace spaces with underscores and convert to uppercase
+  const normalizedName = communityName.replace(/\s+/g, '_').toUpperCase();
+  
+  // Try to get community-specific API key
+  let apiKey = process.env[`ENQUIRE_API_KEY_${normalizedName}`] || null;
+  
+  // Fall back to default API key if community-specific one is not found
+  if (!apiKey) {
+    apiKey = process.env.ENQUIRE_API_KEY || null;
+  }
+  
+  // Try to get community-specific API endpoint
+  let endpoint = process.env[`ENQUIRE_API_ENDPOINT_${normalizedName}`] || null;
+  
+  // Fall back to default API endpoint if community-specific one is not found
+  if (!endpoint) {
+    endpoint = process.env.ENQUIRE_API_ENDPOINT || 'https://api2.enquiresolutions.com/2/Individual/';
+  }
+  
+  // Check for community-specific duplicate check setting
+  const globalDuplicateCheck = 
+    process.env[`ENABLE_GLOBAL_DUPLICATE_CHECK_${normalizedName}`] === 'true' || 
+    process.env.ENABLE_GLOBAL_DUPLICATE_CHECK === 'true';
+  
+  return {
+    apiKey,
+    endpoint,
+    globalDuplicateCheck
+  };
+}
+
+/**
  * Validates the appointment request data
  * 
  * @param data The data to validate
@@ -24,6 +95,13 @@ function validateAppointmentData(data: any): { isValid: boolean; errors: Record<
   // Required fields
   if (!data.CommunityName) {
     errors.CommunityName = 'Community name is required';
+  } else {
+    // Check if community is in the allowed list (if a whitelist exists)
+    const allowedCommunities = getAllowedCommunities();
+    if (allowedCommunities && !allowedCommunities.includes(data.CommunityName)) {
+      errors.CommunityName = 'Invalid community name';
+      logger.warn(`Attempt to submit to unauthorized community: ${data.CommunityName}`);
+    }
   }
 
   if (!data.FirstName) {
@@ -57,9 +135,13 @@ function validateAppointmentData(data: any): { isValid: boolean; errors: Record<
  * Transforms the form data into the format expected by the Enquire API
  * 
  * @param data The form data
+ * @param communityConfig Configuration for the community
  * @returns Transformed data for the Enquire API
  */
-function transformFormData(data: any): EnquireAppointmentRequest {
+function transformFormData(
+  data: any, 
+  communityConfig: { globalDuplicateCheck: boolean }
+): EnquireAppointmentRequest {
   // Basic field mapping
   const payload: EnquireAppointmentRequest = {
     CommunityName: data.CommunityName,
@@ -76,7 +158,8 @@ function transformFormData(data: any): EnquireAppointmentRequest {
   };
 
   // Set ReferralType to 0 for global duplicate check if specified
-  if (process.env.ENABLE_GLOBAL_DUPLICATE_CHECK === 'true') {
+  // Use community-specific setting if available
+  if (communityConfig.globalDuplicateCheck) {
     payload.ReferralType = 0;
   }
 
@@ -98,24 +181,24 @@ function capitalizeFirstLetter(str?: string): string {
  * Makes the actual API request to Enquire Solutions
  * 
  * @param payload The data to send to the Enquire API
+ * @param apiConfig API configuration including key and endpoint
  * @returns The API response
  */
-async function submitToEnquireApi(payload: EnquireAppointmentRequest): Promise<EnquireApiResponse> {
-  // Get API key from server-side environment variable (not exposed to client)
-  const apiKey = process.env.ENQUIRE_API_KEY;
+async function submitToEnquireApi(
+  payload: EnquireAppointmentRequest, 
+  apiConfig: { apiKey: string | null; endpoint: string }
+): Promise<EnquireApiResponse> {
+  const { apiKey, endpoint } = apiConfig;
   
   if (!apiKey) {
-    logger.error('Missing Enquire API key in environment variables');
+    logger.error(`Missing Enquire API key for community: ${payload.CommunityName}`);
     throw new Error('API configuration error');
   }
 
-  // Get API endpoint from environment or use default
-  const apiEndpoint = process.env.ENQUIRE_API_ENDPOINT || 'https://api2.enquiresolutions.com/2/Individual/';
-  
-  logger.info(`Submitting appointment request to Enquire API for ${payload.FirstName} ${payload.LastName}`);
+  logger.info(`Submitting appointment request to Enquire API for ${payload.FirstName} ${payload.LastName} (Community: ${payload.CommunityName})`);
   
   try {
-    const response = await fetch(apiEndpoint, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -130,16 +213,16 @@ async function submitToEnquireApi(payload: EnquireAppointmentRequest): Promise<E
     if (!response.ok) {
       // Log detailed error information
       const errorText = await response.text();
-      logger.error(`Enquire API error: ${response.status} ${response.statusText}`, { errorText });
+      logger.error(`Enquire API error for ${payload.CommunityName}: ${response.status} ${response.statusText}`, { errorText });
       throw new Error(`API request failed with status ${response.status}`);
     }
 
     const data = await response.json();
-    logger.info('Enquire API response received', { createReturn: data.CreateReturn });
+    logger.info(`Enquire API response received for ${payload.CommunityName}`, { createReturn: data.CreateReturn });
     return data as EnquireApiResponse;
   } catch (error) {
     // Log the error with all available context
-    logger.error('Error submitting to Enquire API', error);
+    logger.error(`Error submitting to Enquire API for ${payload.CommunityName}`, error);
     throw error;
   }
 }
@@ -174,14 +257,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Log the incoming request (excluding sensitive data)
-    const { FirstName, LastName } = req.body;
-    logger.info(`Received appointment request for ${FirstName} ${LastName}`);
+    // Extract community name for logging
+    const { CommunityName, FirstName, LastName } = req.body;
+    
+    // Log the incoming request with community information
+    logger.info(`Received appointment request for ${FirstName} ${LastName} (Community: ${CommunityName || 'Not specified'})`);
 
     // Validate the request body
     const validation = validateAppointmentData(req.body);
     if (!validation.isValid) {
-      logger.warn('Validation failed for appointment request', validation.errors);
+      logger.warn(`Validation failed for appointment request to ${CommunityName || 'unknown community'}`, validation.errors);
       return res.status(400).json({ 
         success: false, 
         message: 'Validation failed', 
@@ -189,18 +274,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
+    // Get community-specific API configuration
+    const communityConfig = getCommunityApiConfig(CommunityName);
+    
     // Transform the data for the Enquire API
-    const payload = transformFormData(req.body);
+    const payload = transformFormData(req.body, communityConfig);
     
     // Submit to Enquire API (in production)
     let response: EnquireApiResponse;
     
     if (process.env.NODE_ENV === 'production' || process.env.ENABLE_API_IN_DEVELOPMENT === 'true') {
       // Real API call
-      response = await submitToEnquireApi(payload);
+      response = await submitToEnquireApi(payload, communityConfig);
     } else {
       // Mock successful response for development
-      logger.info('Using mock API response in development mode');
+      logger.info(`Using mock API response in development mode for ${CommunityName}`);
       response = {
         CreateReturn: EnquireCreateReturnCode.SUCCESS,
         IndividualId: 123456,
@@ -219,6 +307,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       success: status.success,
       message: status.message,
       isDuplicate: status.duplicate,
+      community: CommunityName, // Include community name in response for client reference
       data: response,
     });
   } catch (error) {
