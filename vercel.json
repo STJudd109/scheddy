@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
+  "buildCommand": "npm run vercel-build",
   "outputDirectory": "out",
   "framework": "nextjs",
   "headers": [
@@ -67,7 +67,21 @@
     }
   ],
   "rewrites": [
-    { "source": "/(.*)", "destination": "/404.html", "has": [{ "type": "header", "key": "x-vercel-skip-asset", "value": "1" }] }
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/404.html",
+      "has": [
+        {
+          "type": "header",
+          "key": "x-vercel-skip-asset",
+          "value": "1"
+        }
+      ]
+    }
   ],
   "trailingSlash": false,
   "cleanUrls": true

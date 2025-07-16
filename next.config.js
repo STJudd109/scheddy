@@ -1,9 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  output: 'export', // Enable static exports for Vercel deployment
+  // NOTE: We no longer perform a static export; let Next.js handle
+  // server functions normally so API routes work on Vercel.
   images: {
-    unoptimized: true, // Required for static export
     domains: [
       'vercel.app', // Allow images from Vercel deployments
       'localhost', // Allow local development images
@@ -20,8 +20,10 @@ const nextConfig = {
     // Default API endpoint if not provided in environment
     NEXT_PUBLIC_API_ENDPOINT: 'https://api2.enquiresolutions.com/2/Individual/',
   },
-  // Ensure trailing slashes are consistent
-  trailingSlash: true,
+  // Ensure trailing slashes are consistent (must match vercel.json)
+  trailingSlash: false,
+  // Build output directory (Vercel reads this when `"outputDirectory": "out"` is set)
+  distDir: 'out',
   // Disable source maps in production for smaller bundle size
   productionBrowserSourceMaps: false,
 };
