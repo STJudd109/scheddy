@@ -10,7 +10,7 @@ import {
   ERROR_MESSAGES,
   DEFAULT_CONFIG
 } from '../../lib/constants';
-import { AppointmentFormData } from '../../types/enquire';
+import type { AppointmentFormData } from '../../types/enquire';
 
 /**
  * Internal helper for consistent console-logging of errors originating

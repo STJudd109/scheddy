@@ -1,5 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { EnquireAppointmentRequest, EnquireApiResponse, EnquireCreateReturnCode } from '../../types/enquire';
+import type {
+  EnquireAppointmentRequest,
+  EnquireApiResponse,
+  EnquireCreateReturnCode,
+} from '../../types/enquire';
 import { createLogger } from '../../lib/logger';
 
 // Create a logger instance for this API route
