@@ -8,7 +8,8 @@ import {
   MARKET_SOURCE_OPTIONS, 
   VALIDATION_PATTERNS, 
   ERROR_MESSAGES,
-  DEFAULT_CONFIG
+  DEFAULT_CONFIG,
+  US_STATES
 } from '../../lib/constants';
 import type { AppointmentFormData } from '../../types/enquire';
 
@@ -74,8 +75,29 @@ const validationSchema = yup.object().shape({
     .matches(VALIDATION_PATTERNS.NAME, ERROR_MESSAGES.INVALID_NAME),
   Email: yup.string()
     .email(ERROR_MESSAGES.INVALID_EMAIL),
-  Phone: yup.string()
-    .matches(VALIDATION_PATTERNS.PHONE, ERROR_MESSAGES.INVALID_PHONE),
+  HomePhone: yup.string()
+    .matches(VALIDATION_PATTERNS.HOME_PHONE, ERROR_MESSAGES.INVALID_PHONE)
+    .optional(),
+  WorkPhone: yup.string()
+    .matches(VALIDATION_PATTERNS.WORK_PHONE, ERROR_MESSAGES.INVALID_PHONE)
+    .optional(),
+  MobilePhone: yup.string()
+    .matches(VALIDATION_PATTERNS.MOBILE_PHONE, ERROR_MESSAGES.INVALID_PHONE)
+    .optional(),
+  AddressLine1: yup.string()
+    .matches(VALIDATION_PATTERNS.ADDRESS_LINE, ERROR_MESSAGES.INVALID_ADDRESS)
+    .optional(),
+  AddressLine2: yup.string()
+    .optional(),
+  City: yup.string()
+    .matches(VALIDATION_PATTERNS.CITY, ERROR_MESSAGES.INVALID_CITY)
+    .optional(),
+  State: yup.string()
+    .matches(VALIDATION_PATTERNS.STATE, ERROR_MESSAGES.INVALID_STATE)
+    .optional(),
+  ZipCode: yup.string()
+    .matches(VALIDATION_PATTERNS.ZIP_CODE, ERROR_MESSAGES.INVALID_ZIP)
+    .optional(),
   CareType: yup.string(),
   MarketSource: yup.string(),
   Message: yup.string(),
@@ -121,9 +143,16 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
       FirstName: '',
       LastName: '',
       Email: '',
-      Phone: '',
+      HomePhone: '',
+      WorkPhone: '',
+      MobilePhone: '',
       CareType: '',
       MarketSource: '',
+      AddressLine1: '',
+      AddressLine2: '',
+      City: '',
+      State: '',
+      ZipCode: '',
       Message: '',
     },
   });
@@ -364,7 +393,8 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
           {/* Hidden Community Name field */}
           <input type="hidden" {...register('CommunityName')} value={communityName} />
           
-          {/* Personal Information */}
+          {/* Personal Information Section */}
+          <h3 className="text-lg font-medium mb-3 text-gray-700">Personal Information</h3>
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="FirstName" className="block mb-2 font-medium text-gray-700">
@@ -403,45 +433,188 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
             </div>
           </div>
           
-          {/* Contact Information */}
+          {/* Email Field (separate) */}
+          <div className="form-group mt-4">
+            <label htmlFor="Email" className="block mb-2 font-medium text-gray-700">
+              Email
+            </label>
+            <input
+              id="Email"
+              type="email"
+              {...register('Email')}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                errors.Email ? 'border-error focus:ring-error' : 'border-gray-300'
+              }`}
+              aria-invalid={errors.Email ? 'true' : 'false'}
+            />
+            {errors.Email && (
+              <span className="error-text" role="alert">{errors.Email.message}</span>
+            )}
+          </div>
+          
+          {/* Contact Information Section */}
+          <h3 className="text-lg font-medium mb-3 mt-6 text-gray-700">Contact Information</h3>
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="Email" className="block mb-2 font-medium text-gray-700">
-                Email
+              <label htmlFor="HomePhone" className="block mb-2 font-medium text-gray-700">
+                Home Phone
               </label>
               <input
-                id="Email"
-                type="email"
-                {...register('Email')}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
-                  errors.Email ? 'border-error focus:ring-error' : 'border-gray-300'
-                }`}
-                aria-invalid={errors.Email ? 'true' : 'false'}
-              />
-              {errors.Email && (
-                <span className="error-text" role="alert">{errors.Email.message}</span>
-              )}
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="Phone" className="block mb-2 font-medium text-gray-700">
-                Phone
-              </label>
-              <input
-                id="Phone"
+                id="HomePhone"
                 type="tel"
-                {...register('Phone')}
+                {...register('HomePhone')}
                 placeholder="(123) 456-7890"
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
-                  errors.Phone ? 'border-error focus:ring-error' : 'border-gray-300'
+                  errors.HomePhone ? 'border-error focus:ring-error' : 'border-gray-300'
                 }`}
-                aria-invalid={errors.Phone ? 'true' : 'false'}
+                aria-invalid={errors.HomePhone ? 'true' : 'false'}
               />
-              {errors.Phone && (
-                <span className="error-text" role="alert">{errors.Phone.message}</span>
+              {errors.HomePhone && (
+                <span className="error-text" role="alert">{errors.HomePhone.message}</span>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="MobilePhone" className="block mb-2 font-medium text-gray-700">
+                Mobile Phone
+              </label>
+              <input
+                id="MobilePhone"
+                type="tel"
+                {...register('MobilePhone')}
+                placeholder="(123) 456-7890"
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                  errors.MobilePhone ? 'border-error focus:ring-error' : 'border-gray-300'
+                }`}
+                aria-invalid={errors.MobilePhone ? 'true' : 'false'}
+              />
+              {errors.MobilePhone && (
+                <span className="error-text" role="alert">{errors.MobilePhone.message}</span>
               )}
             </div>
           </div>
+
+          <div className="form-group mt-4">
+            <label htmlFor="WorkPhone" className="block mb-2 font-medium text-gray-700">
+              Work Phone
+            </label>
+            <input
+              id="WorkPhone"
+              type="tel"
+              {...register('WorkPhone')}
+              placeholder="(123) 456-7890"
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                errors.WorkPhone ? 'border-error focus:ring-error' : 'border-gray-300'
+              }`}
+              aria-invalid={errors.WorkPhone ? 'true' : 'false'}
+            />
+            {errors.WorkPhone && (
+              <span className="error-text" role="alert">{errors.WorkPhone.message}</span>
+            )}
+          </div>
+
+          {/* Address Information Section */}
+          <h3 className="text-lg font-medium mb-3 mt-6 text-gray-700">Address Information</h3>
+          <div className="form-group">
+            <label htmlFor="AddressLine1" className="block mb-2 font-medium text-gray-700">
+              Address Line 1
+            </label>
+            <input
+              id="AddressLine1"
+              type="text"
+              {...register('AddressLine1')}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                errors.AddressLine1 ? 'border-error focus:ring-error' : 'border-gray-300'
+              }`}
+              aria-invalid={errors.AddressLine1 ? 'true' : 'false'}
+            />
+            {errors.AddressLine1 && (
+              <span className="error-text" role="alert">{errors.AddressLine1.message}</span>
+            )}
+          </div>
+
+          <div className="form-group mt-4">
+            <label htmlFor="AddressLine2" className="block mb-2 font-medium text-gray-700">
+              Address Line 2
+            </label>
+            <input
+              id="AddressLine2"
+              type="text"
+              {...register('AddressLine2')}
+              className="w-full px-3 py-2 border rounded-md border-gray-300"
+            />
+          </div>
+
+          <div className="form-row mt-4">
+            <div className="form-group">
+              <label htmlFor="City" className="block mb-2 font-medium text-gray-700">
+                City
+              </label>
+              <input
+                id="City"
+                type="text"
+                {...register('City')}
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                  errors.City ? 'border-error focus:ring-error' : 'border-gray-300'
+                }`}
+                aria-invalid={errors.City ? 'true' : 'false'}
+              />
+              {errors.City && (
+                <span className="error-text" role="alert">{errors.City.message}</span>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="State" className="block mb-2 font-medium text-gray-700">
+                State
+              </label>
+              <Controller
+                name="State"
+                control={control}
+                render={({ field }) => (
+                  <select
+                    id="State"
+                    {...field}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                      errors.State ? 'border-error focus:ring-error' : 'border-gray-300'
+                    }`}
+                    aria-invalid={errors.State ? 'true' : 'false'}
+                  >
+                    <option value="">Select</option>
+                    {US_STATES.map((st) => (
+                      <option key={st.value} value={st.value}>
+                        {st.label}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              />
+              {errors.State && (
+                <span className="error-text" role="alert">{errors.State.message}</span>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="ZipCode" className="block mb-2 font-medium text-gray-700">
+                Zip Code
+              </label>
+              <input
+                id="ZipCode"
+                type="text"
+                {...register('ZipCode')}
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                  errors.ZipCode ? 'border-error focus:ring-error' : 'border-gray-300'
+                }`}
+                aria-invalid={errors.ZipCode ? 'true' : 'false'}
+              />
+              {errors.ZipCode && (
+                <span className="error-text" role="alert">{errors.ZipCode.message}</span>
+              )}
+            </div>
+          </div>
+          
+          {/* Preferences Section */}
+          <h3 className="text-lg font-medium mb-3 mt-6 text-gray-700">Preferences</h3>
           
           {/* Care Type Dropdown */}
           <div className="form-group">
@@ -475,7 +648,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
           </div>
           
           {/* Market Source Dropdown */}
-          <div className="form-group">
+          <div className="form-group mt-4">
             <label htmlFor="MarketSource" className="block mb-2 font-medium text-gray-700">
               How did you hear about us?
             </label>
@@ -506,9 +679,9 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
           </div>
           
           {/* Message Textarea */}
-          <div className="form-group">
+          <div className="form-group mt-6">
             <label htmlFor="Message" className="block mb-2 font-medium text-gray-700">
-              Message
+              Message (Notes)
             </label>
             <textarea
               id="Message"
@@ -527,7 +700,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
           
           {/* Cloudflare Turnstile */}
           {turnstileKey && (
-            <div className="form-group turnstile-container mt-4">
+            <div className="form-group turnstile-container mt-6">
               <div 
                 id="cf-turnstile" 
                 ref={turnstileRef}

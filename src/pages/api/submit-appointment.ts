@@ -67,6 +67,15 @@ const VALIDATION_PATTERNS = {
   NAME: /^[a-zA-Z\s\-'.]+$/,
   EMAIL: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
   PHONE: /^(\+\d{1,2}\s?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$/,
+  // Additional phone field patterns (using same regex as PHONE)
+  HOME_PHONE: /^(\+\d{1,2}\s?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$/,
+  WORK_PHONE: /^(\+\d{1,2}\s?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$/,
+  MOBILE_PHONE: /^(\+\d{1,2}\s?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$/,
+  // Address-related patterns
+  ADDRESS_LINE: /^[a-zA-Z0-9\s,'-.#]{3,}$/,
+  CITY: /^[a-zA-Z\s'-]{2,}$/,
+  STATE: /^[A-Z]{2}$/,
+  ZIP_CODE: /^\d{5}(-\d{4})?$/,
 };
 
 /**
@@ -178,8 +187,40 @@ function validateAppointmentData(data: any): { isValid: boolean; errors: Record<
     errors.Email = 'Email format is invalid';
   }
 
+  // Phone field validations
   if (data.Phone && !VALIDATION_PATTERNS.PHONE.test(data.Phone)) {
     errors.Phone = 'Phone number format is invalid';
+  }
+
+  if (data.HomePhone && !VALIDATION_PATTERNS.HOME_PHONE.test(data.HomePhone)) {
+    errors.HomePhone = 'Home phone number format is invalid';
+  }
+
+  if (data.WorkPhone && !VALIDATION_PATTERNS.WORK_PHONE.test(data.WorkPhone)) {
+    errors.WorkPhone = 'Work phone number format is invalid';
+  }
+
+  if (data.MobilePhone && !VALIDATION_PATTERNS.MOBILE_PHONE.test(data.MobilePhone)) {
+    errors.MobilePhone = 'Mobile phone number format is invalid';
+  }
+
+  // Address field validations
+  if (data.AddressLine1 && !VALIDATION_PATTERNS.ADDRESS_LINE.test(data.AddressLine1)) {
+    errors.AddressLine1 = 'Address line 1 format is invalid';
+  }
+
+  // No validation for AddressLine2 as it's completely optional
+
+  if (data.City && !VALIDATION_PATTERNS.CITY.test(data.City)) {
+    errors.City = 'City format is invalid';
+  }
+
+  if (data.State && !VALIDATION_PATTERNS.STATE.test(data.State)) {
+    errors.State = 'State should be a 2-letter code';
+  }
+
+  if (data.ZipCode && !VALIDATION_PATTERNS.ZIP_CODE.test(data.ZipCode)) {
+    errors.ZipCode = 'ZIP code format is invalid';
   }
 
   return {
@@ -205,14 +246,59 @@ function transformFormData(
     FirstName: capitalizeFirstLetter(data.FirstName),
     LastName: capitalizeFirstLetter(data.LastName),
     Email: data.Email?.toLowerCase().trim(),
-    Phone: data.Phone,
+    Message: data.Message?.trim(),
     CareType: data.CareType,
     MarketSource: data.MarketSource,
-    Message: data.Message?.trim(),
     // Add submission metadata
     SubmissionDate: new Date().toISOString(),
     SubmittedFrom: data.SubmittedFrom || 'API',
   };
+
+  // Handle phone fields with backward compatibility
+  if (data.HomePhone) {
+    payload.HomePhone = data.HomePhone;
+  }
+  
+  if (data.WorkPhone) {
+    payload.WorkPhone = data.WorkPhone;
+  }
+  
+  if (data.MobilePhone) {
+    payload.MobilePhone = data.MobilePhone;
+  }
+  
+  // If no specific phone fields are provided but legacy Phone is,
+  // map it to HomePhone for backward compatibility
+  if (!data.HomePhone && !data.WorkPhone && !data.MobilePhone && data.Phone) {
+    payload.HomePhone = data.Phone;
+    // Also keep the legacy field for maximum compatibility
+    payload.Phone = data.Phone;
+  } else if (data.Phone) {
+    // If we have specific phone fields but also a legacy Phone field,
+    // include it for backward compatibility
+    payload.Phone = data.Phone;
+  }
+
+  // Add address fields if provided
+  if (data.AddressLine1) {
+    payload.AddressLine1 = data.AddressLine1;
+  }
+  
+  if (data.AddressLine2) {
+    payload.AddressLine2 = data.AddressLine2;
+  }
+  
+  if (data.City) {
+    payload.City = data.City;
+  }
+  
+  if (data.State) {
+    payload.State = data.State;
+  }
+  
+  if (data.ZipCode) {
+    payload.ZipCode = data.ZipCode;
+  }
 
   // Set ReferralType to 0 for global duplicate check if specified
   // Use community-specific setting if available

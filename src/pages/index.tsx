@@ -51,11 +51,14 @@ export default function Home() {
         </h1>
         
         <AppointmentForm
+          /* Community */
           communityName={
             typeof community === 'string' && community.trim()
               ? community
               : process.env.NEXT_PUBLIC_COMMUNITY_NAME || 'Demo Community'
           }
+          /* Cloudflare Turnstile (optional) */
+          turnstileKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
           onSubmitSuccess={handleSuccess}
           onSubmitFailure={handleError}
         />

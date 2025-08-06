@@ -35,6 +35,72 @@ export const MARKET_SOURCE_OPTIONS = [
 ];
 
 /**
+ * United States states and territories
+ *
+ * Two–letter postal abbreviations mapped to human-readable names, formatted
+ * like other dropdown option constants so it can be used directly in a
+ * <select> component:
+ *
+ *   <select>
+ *     {US_STATES.map(opt => (
+ *       <option value={opt.value}>{opt.label}</option>
+ *     ))}
+ *   </select>
+ */
+export const US_STATES = [
+  { value: 'AL', label: 'Alabama' },
+  { value: 'AK', label: 'Alaska' },
+  { value: 'AZ', label: 'Arizona' },
+  { value: 'AR', label: 'Arkansas' },
+  { value: 'CA', label: 'California' },
+  { value: 'CO', label: 'Colorado' },
+  { value: 'CT', label: 'Connecticut' },
+  { value: 'DE', label: 'Delaware' },
+  { value: 'FL', label: 'Florida' },
+  { value: 'GA', label: 'Georgia' },
+  { value: 'HI', label: 'Hawaii' },
+  { value: 'ID', label: 'Idaho' },
+  { value: 'IL', label: 'Illinois' },
+  { value: 'IN', label: 'Indiana' },
+  { value: 'IA', label: 'Iowa' },
+  { value: 'KS', label: 'Kansas' },
+  { value: 'KY', label: 'Kentucky' },
+  { value: 'LA', label: 'Louisiana' },
+  { value: 'ME', label: 'Maine' },
+  { value: 'MD', label: 'Maryland' },
+  { value: 'MA', label: 'Massachusetts' },
+  { value: 'MI', label: 'Michigan' },
+  { value: 'MN', label: 'Minnesota' },
+  { value: 'MS', label: 'Mississippi' },
+  { value: 'MO', label: 'Missouri' },
+  { value: 'MT', label: 'Montana' },
+  { value: 'NE', label: 'Nebraska' },
+  { value: 'NV', label: 'Nevada' },
+  { value: 'NH', label: 'New Hampshire' },
+  { value: 'NJ', label: 'New Jersey' },
+  { value: 'NM', label: 'New Mexico' },
+  { value: 'NY', label: 'New York' },
+  { value: 'NC', label: 'North Carolina' },
+  { value: 'ND', label: 'North Dakota' },
+  { value: 'OH', label: 'Ohio' },
+  { value: 'OK', label: 'Oklahoma' },
+  { value: 'OR', label: 'Oregon' },
+  { value: 'PA', label: 'Pennsylvania' },
+  { value: 'RI', label: 'Rhode Island' },
+  { value: 'SC', label: 'South Carolina' },
+  { value: 'SD', label: 'South Dakota' },
+  { value: 'TN', label: 'Tennessee' },
+  { value: 'TX', label: 'Texas' },
+  { value: 'UT', label: 'Utah' },
+  { value: 'VT', label: 'Vermont' },
+  { value: 'VA', label: 'Virginia' },
+  { value: 'WA', label: 'Washington' },
+  { value: 'WV', label: 'West Virginia' },
+  { value: 'WI', label: 'Wisconsin' },
+  { value: 'WY', label: 'Wyoming' },
+];
+
+/**
  * API related constants
  */
 export const API_CONSTANTS = {
@@ -52,6 +118,14 @@ export const VALIDATION_PATTERNS = {
   PHONE: /^(\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$/,
   NAME: /^[a-zA-Z\s'-]+$/,
   ZIP_CODE: /^\d{5}(-\d{4})?$/,
+  /* Individual phone field aliases (reuse the generic PHONE regex) */
+  HOME_PHONE: /^(\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$/,
+  WORK_PHONE: /^(\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$/,
+  MOBILE_PHONE: /^(\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$/,
+  /* Address-related patterns */
+  ADDRESS_LINE: /^[a-zA-Z0-9\\s,'-.#]{3,}$/,        // Basic street address validation
+  CITY: /^[a-zA-Z\\s'-]{2,}$/,                      // Letters, spaces, apostrophes, hyphens
+  STATE: /^[A-Z]{2}$/,                              // 2-letter state code
 };
 
 /**
@@ -62,6 +136,10 @@ export const ERROR_MESSAGES = {
   INVALID_EMAIL: 'Please enter a valid email address',
   INVALID_PHONE: 'Please enter a valid phone number',
   INVALID_NAME: 'Please enter a valid name',
+  INVALID_ADDRESS: 'Please enter a valid address',
+  INVALID_CITY: 'Please enter a valid city',
+  INVALID_STATE: 'Please enter a valid 2-letter state code',
+  INVALID_ZIP: 'Please enter a valid ZIP code',
   SUBMISSION_FAILED: 'There was an error submitting your request. Please try again.',
   DUPLICATE: 'It looks like you have already submitted a request. We will contact you soon.',
 };

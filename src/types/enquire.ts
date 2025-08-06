@@ -21,7 +21,22 @@ export interface EnquireAppointmentRequest {
   /** Prospect's email address */
   Email?: string;
   
-  /** Prospect's phone number */
+  /**
+   * Prospect's home phone number
+   * (If only one phone is collected this should typically be the primary/home number)
+   */
+  HomePhone?: string;
+
+  /** Prospect's work phone number */
+  WorkPhone?: string;
+
+  /** Prospect's mobile / cell phone number */
+  MobilePhone?: string;
+
+  /**
+   * @deprecated  Use HomePhone / WorkPhone / MobilePhone instead.
+   * Generic phone number field kept for backward-compatibility.
+   */
   Phone?: string;
   
   /** Type of care the prospect is interested in (e.g., "Independent Living", "Memory Care") */
@@ -30,7 +45,22 @@ export interface EnquireAppointmentRequest {
   /** How the prospect heard about the community */
   MarketSource?: string;
   
-  /** Additional notes or message from the prospect */
+  /** Prospect's street address line 1 */
+  AddressLine1?: string;
+
+  /** Prospect's street address line 2 */
+  AddressLine2?: string;
+
+  /** Prospect's city */
+  City?: string;
+
+  /** Prospect's state / province */
+  State?: string;
+
+  /** Prospect's ZIP / postal code */
+  ZipCode?: string;
+
+  /** Additional notes or message from the prospect (stored in Enquire notes) */
   Message?: string;
   
   /** 
@@ -107,7 +137,19 @@ export interface AppointmentFormData {
   /** Prospect's email address */
   Email?: string;
   
-  /** Prospect's phone number */
+  /** Prospect's home phone number */
+  HomePhone?: string;
+
+  /** Prospect's work phone number */
+  WorkPhone?: string;
+
+  /** Prospect's mobile / cell phone number */
+  MobilePhone?: string;
+
+  /**
+   * @deprecated  Use HomePhone / WorkPhone / MobilePhone instead.
+   * Generic phone number field kept for backward-compatibility with existing code.
+   */
   Phone?: string;
   
   /** Type of care the prospect is interested in */
@@ -116,6 +158,21 @@ export interface AppointmentFormData {
   /** How the prospect heard about the community */
   MarketSource?: string;
   
+  /** Prospect's street address line 1 */
+  AddressLine1?: string;
+
+  /** Prospect's street address line 2 */
+  AddressLine2?: string;
+
+  /** Prospect's city */
+  City?: string;
+
+  /** Prospect's state / province */
+  State?: string;
+
+  /** Prospect's ZIP / postal code */
+  ZipCode?: string;
+
   /** Additional notes or message from the prospect */
   Message?: string;
   
