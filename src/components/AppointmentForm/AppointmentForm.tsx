@@ -718,7 +718,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
           <div className="form-group submit-container mt-6">
             <button 
               type="submit" 
-              disabled={isSubmitting || formSubmitting || (turnstileKey && !turnstileToken)}
+              disabled={isSubmitting || formSubmitting || (!!turnstileKey && !turnstileToken)}
               className="w-full py-3 px-4 font-medium text-white rounded-md transition-colors hover:opacity-90 disabled:opacity-70 disabled:cursor-not-allowed"
               style={{ backgroundColor: theme.primaryColor }}
             >
