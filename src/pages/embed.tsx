@@ -149,10 +149,20 @@ export default function EmbedPage() {
 
   // Create theme object from query parameters
   const theme = {
-    primaryColor: typeof primaryColor === 'string' ? primaryColor : undefined,
-    secondaryColor: typeof secondaryColor === 'string' ? secondaryColor : undefined,
-    logoUrl: typeof logoUrl === 'string' ? logoUrl : undefined,
-    buttonText: typeof buttonText === 'string' ? buttonText : undefined,
+    // Helper to safely decode values (returns undefined for empty / non-string)
+    ...(function () {
+      const decodeParam = (val?: string) =>
+        typeof val === 'string' && val.length
+          ? decodeURIComponent(val)
+          : undefined;
+
+      return {
+        primaryColor: decodeParam(primaryColor as string | undefined),
+        secondaryColor: decodeParam(secondaryColor as string | undefined),
+        logoUrl: decodeParam(logoUrl as string | undefined),
+        buttonText: decodeParam(buttonText as string | undefined),
+      };
+    })(),
   };
 
   // If router is not ready or community is not provided, show loading or error
