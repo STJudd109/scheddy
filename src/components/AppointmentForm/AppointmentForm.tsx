@@ -1031,7 +1031,13 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
               type="submit" 
               disabled={isSubmitting || formSubmitting || (!!turnstileKey && !turnstileToken)}
               className="w-full py-3 px-4 font-medium text-white rounded-md transition-colors hover:opacity-90 disabled:opacity-70 disabled:cursor-not-allowed embedded-submit-button"
-              style={{ backgroundColor: theme.primaryColor }}
+              style={{ 
+                backgroundColor: theme.primaryColor || '#0066cc',
+                color: '#ffffff',
+                opacity: 1,
+                visibility: 'visible',
+                display: 'block'
+              }}
             >
               {isSubmitting ? 'Submitting...' : theme.buttonText || 'Request Appointment'}
             </button>
@@ -1094,19 +1100,60 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
           to { opacity: 1; transform: translateY(0); }
         }
         
-        /* Enhanced button visibility for embedded contexts */
-        .embedded-submit-button {
+        /* Super aggressive button styling for embedded contexts */
+        .appointment-form-container .submit-container .embedded-submit-button,
+        .appointment-form-container form .embedded-submit-button,
+        button.embedded-submit-button,
+        input[type="submit"].embedded-submit-button {
           opacity: 1 !important;
           visibility: visible !important;
           display: block !important;
           z-index: 100 !important;
           position: relative !important;
+          background-color: var(--primary-color, #0066cc) !important;
+          color: #ffffff !important;
           box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
           transform: translateZ(0) !important;
           -webkit-transform: translateZ(0) !important;
           -webkit-appearance: none !important;
           appearance: none !important;
+          border: 2px solid transparent !important;
+          outline: none !important;
+          text-shadow: none !important;
+          font-weight: 600 !important;
+          font-family: inherit !important;
+          text-decoration: none !important;
+          line-height: 1.5 !important;
+          letter-spacing: normal !important;
+          text-transform: none !important;
           transition: background-color 0.2s ease-in-out !important;
+        }
+
+        /* Hover and focus states */
+        .appointment-form-container .submit-container .embedded-submit-button:hover,
+        .appointment-form-container form .embedded-submit-button:hover,
+        button.embedded-submit-button:hover,
+        input[type="submit"].embedded-submit-button:hover,
+        .appointment-form-container .submit-container .embedded-submit-button:focus,
+        .appointment-form-container form .embedded-submit-button:focus,
+        button.embedded-submit-button:focus,
+        input[type="submit"].embedded-submit-button:focus {
+          background-color: var(--primary-color, #0066cc) !important;
+          color: #ffffff !important;
+          opacity: 0.9 !important;
+          border-color: transparent !important;
+          outline: none !important;
+        }
+
+        /* Disabled state */
+        .appointment-form-container .submit-container .embedded-submit-button:disabled,
+        .appointment-form-container form .embedded-submit-button:disabled,
+        button.embedded-submit-button:disabled,
+        input[type="submit"].embedded-submit-button:disabled {
+          opacity: 0.7 !important;
+          cursor: not-allowed !important;
+          background-color: var(--primary-color, #0066cc) !important;
+          color: #ffffff !important;
         }
         
         /* Make sure error text is visible */
