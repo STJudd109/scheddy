@@ -228,7 +228,7 @@ export interface AppointmentFormData {
    * ------------------------------------------------------------------ */
 
   /** See EnquireAppointmentRequest for documentation */
-  SubmissionType?: 'self' | 'family_member';
+  SubmissionType: 'self' | 'family_member';
 
   ContactFirstName?: string;
   ContactLastName?: string;
