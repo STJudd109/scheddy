@@ -10,6 +10,7 @@
  *   data-community="Community Name"
  *   data-color="#0066cc"
  *   data-target="#appointment-form-container"
+ *   data-market-source="Google Ads"   <!-- Optional, defaults to “Website” -->
  * ></script>
  * 
  * <div id="appointment-form-container"></div>
@@ -47,6 +48,8 @@
     secondaryColor: currentScript.getAttribute('data-secondary-color') || '#f8f9fa',
     logoUrl: currentScript.getAttribute('data-logo') || '',
     buttonText: currentScript.getAttribute('data-button-text') || 'Request Appointment',
+    // New: marketing attribution
+    marketSource: currentScript.getAttribute('data-market-source') || 'Website',
     height: currentScript.getAttribute('data-height') || 'auto',
     width: currentScript.getAttribute('data-width') || '100%',
     
@@ -95,6 +98,11 @@
     
     if (config.buttonText) {
       url.searchParams.append('buttonText', encodeURIComponent(config.buttonText));
+    }
+    
+    // Always include Market Source (falls back to "Website")
+    if (config.marketSource) {
+      url.searchParams.append('marketSource', encodeURIComponent(config.marketSource));
     }
     
     // Add referrer information

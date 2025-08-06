@@ -172,6 +172,7 @@ Want a different site to show Oakwood Estates?
 | `data-secondary-color`| No       | Secondary / background colour                        |
 | `data-logo`           | No       | URL to a logo shown at the top of the form           |
 | `data-button-text`    | No       | Override submit-button label                         |
+| `data-market-source`  | No       | Marketing attribution (e.g. “Google Ads”). Defaults to **“Website”** and is forwarded to the Enquire/Aline API |
 | `data-target`         | No       | CSS selector of the container (defaults to `body`)   |
 | `data-height`/`width` | No       | Explicit iframe dimensions (otherwise auto-resize)   |
 

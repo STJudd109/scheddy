@@ -38,6 +38,7 @@ export default function EmbedPage() {
     secondaryColor,
     logoUrl,
     buttonText,
+    marketSource,
     referrer,
     // capture any unnamed query param as potential community code
     ...restParams
@@ -72,6 +73,14 @@ export default function EmbedPage() {
     return clean;
   }, [resolvedCommunity]);
 
+  // Resolve market source with default
+  const resolvedMarketSource = React.useMemo(() => {
+    if (typeof marketSource === 'string' && marketSource.trim()) {
+      return marketSource.trim();
+    }
+    return 'Website';
+  }, [marketSource]);
+
   // Only run after router is ready and query params are available
   useEffect(() => {
     if (!router.isReady) return;
@@ -80,11 +89,12 @@ export default function EmbedPage() {
     logger.info('Initializing embedded form', {
       community: community || 'Not provided',
       referrer: referrer || 'Unknown',
-      hasCustomBranding: !!(primaryColor || logoUrl)
+      hasCustomBranding: !!(primaryColor || logoUrl),
+      marketSource: resolvedMarketSource
     });
     
     setInitialized(true);
-  }, [router.isReady, community, primaryColor, logoUrl, referrer]);
+  }, [router.isReady, community, primaryColor, logoUrl, referrer, resolvedMarketSource]);
 
   // Handle iframe resizing
   useEffect(() => {
@@ -231,6 +241,8 @@ export default function EmbedPage() {
             beforeSubmitTransform={(data) => ({
               ...data,
               SubmittedFrom: referrer || window.location.href,
+              // Ensure MarketSource is set either from form input or query/default
+              MarketSource: data.MarketSource || resolvedMarketSource,
             })}
           />
         </ThemeProvider>
