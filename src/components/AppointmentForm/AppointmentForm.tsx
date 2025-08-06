@@ -112,6 +112,10 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
     control,
     formState: { errors, isSubmitting: formSubmitting },
     reset,
+    trigger,
+    getValues,
+    setError,
+    clearErrors,
   } = useForm<AppointmentFormData>({
     // Basic client-side rules (HTML5 constraints); heavy validation is done server-side
     defaultValues: {
@@ -230,9 +234,47 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
     });
   };
 
+  // Validate that at least one phone number is provided
+  const validatePhoneFields = () => {
+    const values = getValues();
+    
+    // For resident/prospect phone fields
+    const hasResidentPhone = values.HomePhone || values.WorkPhone || values.MobilePhone;
+    if (!hasResidentPhone) {
+      setError('HomePhone', { 
+        type: 'custom', 
+        message: 'Please provide at least one phone number' 
+      });
+      return false;
+    } else {
+      clearErrors(['HomePhone', 'WorkPhone', 'MobilePhone']);
+    }
+    
+    // For contact phone fields (only if submission type is family_member)
+    if (values.SubmissionType === 'family_member') {
+      const hasContactPhone = values.ContactHomePhone || values.ContactWorkPhone || values.ContactMobilePhone;
+      if (!hasContactPhone) {
+        setError('ContactHomePhone', { 
+          type: 'custom', 
+          message: 'Please provide at least one contact phone number' 
+        });
+        return false;
+      } else {
+        clearErrors(['ContactHomePhone', 'ContactWorkPhone', 'ContactMobilePhone']);
+      }
+    }
+    
+    return true;
+  };
+
   // Handle form submission
   const onSubmit: SubmitHandler<AppointmentFormData> = async (data) => {
     try {
+      // Validate phone fields
+      if (!validatePhoneFields()) {
+        return;
+      }
+      
       // Check if Turnstile is required but not completed
       if (turnstileKey && !turnstileToken) {
         setSubmissionState('error');
@@ -489,6 +531,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
             
             {/* Contact Information Section */}
             <h4 className="text-md font-medium mb-3 mt-6 text-gray-700">Contact Information</h4>
+            <p className="text-sm text-gray-500 mb-4">Please provide at least one phone number</p>
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="HomePhone" className="block mb-2 font-medium text-gray-700">
@@ -712,6 +755,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
               </div>
               
               <div className="form-row mt-4">
+                <p className="text-sm text-gray-500 mb-2 col-span-full">Please provide at least one phone number</p>
                 <div className="form-group">
                   <label htmlFor="ContactHomePhone" className="block mb-2 font-medium text-gray-700">
                     Your Home Phone
@@ -986,7 +1030,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
             <button 
               type="submit" 
               disabled={isSubmitting || formSubmitting || (!!turnstileKey && !turnstileToken)}
-              className="w-full py-3 px-4 font-medium text-white rounded-md transition-colors hover:opacity-90 disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full py-3 px-4 font-medium text-white rounded-md transition-colors hover:opacity-90 disabled:opacity-70 disabled:cursor-not-allowed embedded-submit-button"
               style={{ backgroundColor: theme.primaryColor }}
             >
               {isSubmitting ? 'Submitting...' : theme.buttonText || 'Request Appointment'}
@@ -1048,6 +1092,35 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
         @keyframes slideDown {
           from { opacity: 0; transform: translateY(-10px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Enhanced button visibility for embedded contexts */
+        .embedded-submit-button {
+          opacity: 1 !important;
+          visibility: visible !important;
+          display: block !important;
+          z-index: 100 !important;
+          position: relative !important;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+          transform: translateZ(0) !important;
+          -webkit-transform: translateZ(0) !important;
+          -webkit-appearance: none !important;
+          appearance: none !important;
+          transition: background-color 0.2s ease-in-out !important;
+        }
+        
+        /* Make sure error text is visible */
+        .error-text {
+          color: #dc3545;
+          font-size: 0.875rem;
+          margin-top: 0.25rem;
+          display: block;
+        }
+        
+        /* Ensure form controls have proper contrast */
+        input, select, textarea {
+          background-color: #ffffff !important;
+          color: #333333 !important;
         }
       `}</style>
     </div>
