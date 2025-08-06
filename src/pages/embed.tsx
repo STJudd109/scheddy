@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import AppointmentForm from '../components/AppointmentForm/AppointmentForm';
 import { createLogger } from '../lib/logger';
+import { ThemeProvider } from '../components/ThemeProvider';
 
 // Create a logger instance for this page
 const logger = createLogger('embed-page');
@@ -208,18 +209,21 @@ export default function EmbedPage() {
       </Head>
       
       <div ref={containerRef} className="embed-container">
-        <AppointmentForm
-          communityName={sanitizedCommunity}
-          theme={theme}
-          turnstileKey={turnstileSiteKey}
-          onSubmitSuccess={handleFormSuccess}
-          onSubmitFailure={handleFormError}
-          // Pass the referrer URL if available
-          beforeSubmitTransform={(data) => ({
-            ...data,
-            SubmittedFrom: referrer || window.location.href,
-          })}
-        />
+        {/* Provide theme via Context so CSS variables are set for embedded iframe */}
+        <ThemeProvider theme={theme}>
+          <AppointmentForm
+            communityName={sanitizedCommunity}
+            theme={theme}
+            turnstileKey={turnstileSiteKey}
+            onSubmitSuccess={handleFormSuccess}
+            onSubmitFailure={handleFormError}
+            // Pass the referrer URL if available
+            beforeSubmitTransform={(data) => ({
+              ...data,
+              SubmittedFrom: referrer || window.location.href,
+            })}
+          />
+        </ThemeProvider>
       </div>
     </>
   );
