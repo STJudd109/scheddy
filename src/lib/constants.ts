@@ -136,7 +136,11 @@ export const VALIDATION_PATTERNS = {
   WORK_PHONE: /^(\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$/,
   MOBILE_PHONE: /^(\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$/,
   /* Address-related patterns */
-  ADDRESS_LINE: /^[a-zA-Z0-9\\s,'-.#]{3,}$/,        // Basic street address validation
+  // More-permissive street address validation:
+  //  • Letters, numbers, spaces
+  //  • Common symbols: # (apt), - (ranges), . (abbr), () (unit), / (fractions), , (separators)
+  //  • Minimum length: 2 characters
+  ADDRESS_LINE: /^[a-zA-Z0-9\\s#\\-.'(),\\/]{2,}$/,
   CITY: /^[a-zA-Z\\s'-]{2,}$/,                      // Letters, spaces, apostrophes, hyphens
   STATE: /^[A-Z]{2}$/,                              // 2-letter state code
 };

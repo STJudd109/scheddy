@@ -72,7 +72,11 @@ const VALIDATION_PATTERNS = {
   WORK_PHONE: /^(\+\d{1,2}\s?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$/,
   MOBILE_PHONE: /^(\+\d{1,2}\s?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$/,
   // Address-related patterns
-  ADDRESS_LINE: /^[a-zA-Z0-9\s,'-.#]{3,}$/,
+  // More-permissive street-address pattern:
+  //  • letters, numbers, spaces
+  //  • common symbols: # - . ' ( ) , /
+  //  • minimum length: 2 characters
+  ADDRESS_LINE: /^[a-zA-Z0-9\s#\-\.'(),\/]{2,}$/,
   CITY: /^[a-zA-Z\s'-]{2,}$/,
   STATE: /^[A-Z]{2}$/,
   ZIP_CODE: /^\d{5}(-\d{4})?$/,
