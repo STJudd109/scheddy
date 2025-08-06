@@ -706,7 +706,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
                 ref={turnstileRef}
                 className="flex justify-center"
               ></div>
-              {submissionState === 'error' && !turnstileToken && (
+              {!turnstileToken && (
                 <span className="error-text text-center block mt-2" role="alert">
                   Please complete the security check
                 </span>
