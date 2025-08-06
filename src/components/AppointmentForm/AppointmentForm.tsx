@@ -22,6 +22,21 @@ const logFormError = (context: string, err: unknown): void => {
   console.error(`[AppointmentForm] ${context}`, err);
 };
 
+/**
+ * Detects whether the form is rendered inside an iframe (embedded context)
+ * 
+ * Returns `true` when `window.self !== window.top`.  Wrapped in a try/catch
+ * because some browsers throw cross-origin errors when accessing `window.top`.
+ */
+const isEmbedded = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true; // Cross-origin – assume embedded
+  }
+};
+
 // TypeScript declarations for Cloudflare Turnstile
 declare global {
   interface Window {
@@ -274,8 +289,8 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
           onSubmitSuccess(result.data);
         }
         
-        // Redirect after delay
-        if (redirectPath) {
+        // Redirect after delay only if not embedded
+        if (!isEmbedded() && redirectPath) {
           setTimeout(() => {
             window.location.href = redirectPath;
           }, redirectDelay);
@@ -316,7 +331,12 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
     <div className="success-message animate-fade-in" role="alert">
       <h3 className="text-lg font-medium mb-2">Thank You!</h3>
       <p>Your appointment request has been submitted successfully.</p>
-      <p className="mt-2 text-sm animate-pulse-slow">You will be redirected shortly...</p>
+      {/* Show redirect notice only when we will actually redirect */}
+      {!isEmbedded() && redirectPath && (
+        <p className="mt-2 text-sm animate-pulse-slow">
+          You will be redirected shortly...
+        </p>
+      )}
     </div>
   );
 
