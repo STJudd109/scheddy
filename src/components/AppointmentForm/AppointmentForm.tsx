@@ -66,96 +66,94 @@ interface AppointmentFormProps {
 // Form submission states
 type SubmissionState = 'idle' | 'submitting' | 'success' | 'error';
 
-// Create a dynamic validation schema based on submission type
-const createValidationSchema = () => {
-  return yup.object().shape({
-    // Common fields for all submission types
-    SubmissionType: yup.string().required('Please select who you are requesting for'),
-    FirstName: yup.string()
-      .required(ERROR_MESSAGES.REQUIRED)
-      .matches(VALIDATION_PATTERNS.NAME, ERROR_MESSAGES.INVALID_NAME),
-    LastName: yup.string()
-      .required(ERROR_MESSAGES.REQUIRED)
-      .matches(VALIDATION_PATTERNS.NAME, ERROR_MESSAGES.INVALID_NAME),
-    Email: yup.string()
-      .email(ERROR_MESSAGES.INVALID_EMAIL),
-    HomePhone: yup.string()
-      .matches(VALIDATION_PATTERNS.HOME_PHONE, ERROR_MESSAGES.INVALID_PHONE)
-      .optional(),
-    WorkPhone: yup.string()
-      .matches(VALIDATION_PATTERNS.WORK_PHONE, ERROR_MESSAGES.INVALID_PHONE)
-      .optional(),
-    MobilePhone: yup.string()
-      .matches(VALIDATION_PATTERNS.MOBILE_PHONE, ERROR_MESSAGES.INVALID_PHONE)
-      .optional(),
-    AddressLine1: yup.string()
-      .matches(VALIDATION_PATTERNS.ADDRESS_LINE, ERROR_MESSAGES.INVALID_ADDRESS)
-      .optional(),
-    AddressLine2: yup.string()
-      .optional(),
-    City: yup.string()
-      .matches(VALIDATION_PATTERNS.CITY, ERROR_MESSAGES.INVALID_CITY)
-      .optional(),
-    State: yup.string()
-      .matches(VALIDATION_PATTERNS.STATE, ERROR_MESSAGES.INVALID_STATE)
-      .optional(),
-    ZipCode: yup.string()
-      .matches(VALIDATION_PATTERNS.ZIP_CODE, ERROR_MESSAGES.INVALID_ZIP)
-      .optional(),
-    CareType: yup.string(),
-    MarketSource: yup.string(),
-    Message: yup.string(),
-    
-    // Contact fields (conditionally required for family_member submissions)
-    ContactFirstName: yup.string()
-      .when('SubmissionType', {
-        is: 'family_member',
-        then: (schema) => schema
-          .required('Contact first name is required')
-          .matches(VALIDATION_PATTERNS.NAME, ERROR_MESSAGES.INVALID_NAME),
-        otherwise: (schema) => schema.optional()
-      }),
-    ContactLastName: yup.string()
-      .when('SubmissionType', {
-        is: 'family_member',
-        then: (schema) => schema
-          .required('Contact last name is required')
-          .matches(VALIDATION_PATTERNS.NAME, ERROR_MESSAGES.INVALID_NAME),
-        otherwise: (schema) => schema.optional()
-      }),
-    ContactEmail: yup.string()
-      .when('SubmissionType', {
-        is: 'family_member',
-        then: (schema) => schema
-          .required('Contact email is required')
-          .email(ERROR_MESSAGES.INVALID_EMAIL),
-        otherwise: (schema) => schema.optional()
-      }),
-    ContactHomePhone: yup.string()
-      .matches(VALIDATION_PATTERNS.HOME_PHONE, ERROR_MESSAGES.INVALID_PHONE)
-      .optional(),
-    ContactWorkPhone: yup.string()
-      .matches(VALIDATION_PATTERNS.WORK_PHONE, ERROR_MESSAGES.INVALID_PHONE)
-      .optional(),
-    ContactMobilePhone: yup.string()
-      .matches(VALIDATION_PATTERNS.MOBILE_PHONE, ERROR_MESSAGES.INVALID_PHONE)
-      .optional(),
-    ContactAddressLine1: yup.string()
-      .matches(VALIDATION_PATTERNS.ADDRESS_LINE, ERROR_MESSAGES.INVALID_ADDRESS)
-      .optional(),
-    ContactAddressLine2: yup.string()
-      .optional(),
-    ContactCity: yup.string()
-      .matches(VALIDATION_PATTERNS.CITY, ERROR_MESSAGES.INVALID_CITY)
-      .optional(),
-    ContactState: yup.string()
-      .matches(VALIDATION_PATTERNS.STATE, ERROR_MESSAGES.INVALID_STATE)
-      .optional(),
-    ContactZipCode: yup.string()
-      .matches(VALIDATION_PATTERNS.ZIP_CODE, ERROR_MESSAGES.INVALID_ZIP)
-      .optional(),
-  });
-};
+// Static validation schema for the form
+const validationSchema = yup.object({
+  // Common fields for all submission types
+  SubmissionType: yup.string().required('Please select who you are requesting for'),
+  FirstName: yup.string()
+    .required(ERROR_MESSAGES.REQUIRED)
+    .matches(VALIDATION_PATTERNS.NAME, ERROR_MESSAGES.INVALID_NAME),
+  LastName: yup.string()
+    .required(ERROR_MESSAGES.REQUIRED)
+    .matches(VALIDATION_PATTERNS.NAME, ERROR_MESSAGES.INVALID_NAME),
+  Email: yup.string()
+    .email(ERROR_MESSAGES.INVALID_EMAIL),
+  HomePhone: yup.string()
+    .matches(VALIDATION_PATTERNS.HOME_PHONE, ERROR_MESSAGES.INVALID_PHONE)
+    .optional(),
+  WorkPhone: yup.string()
+    .matches(VALIDATION_PATTERNS.WORK_PHONE, ERROR_MESSAGES.INVALID_PHONE)
+    .optional(),
+  MobilePhone: yup.string()
+    .matches(VALIDATION_PATTERNS.MOBILE_PHONE, ERROR_MESSAGES.INVALID_PHONE)
+    .optional(),
+  AddressLine1: yup.string()
+    .matches(VALIDATION_PATTERNS.ADDRESS_LINE, ERROR_MESSAGES.INVALID_ADDRESS)
+    .optional(),
+  AddressLine2: yup.string()
+    .optional(),
+  City: yup.string()
+    .matches(VALIDATION_PATTERNS.CITY, ERROR_MESSAGES.INVALID_CITY)
+    .optional(),
+  State: yup.string()
+    .matches(VALIDATION_PATTERNS.STATE, ERROR_MESSAGES.INVALID_STATE)
+    .optional(),
+  ZipCode: yup.string()
+    .matches(VALIDATION_PATTERNS.ZIP_CODE, ERROR_MESSAGES.INVALID_ZIP)
+    .optional(),
+  CareType: yup.string(),
+  MarketSource: yup.string(),
+  Message: yup.string(),
+  
+  // Contact fields (conditionally required for family_member submissions)
+  ContactFirstName: yup.string()
+    .when('SubmissionType', {
+      is: 'family_member',
+      then: (schema) => schema
+        .required('Contact first name is required')
+        .matches(VALIDATION_PATTERNS.NAME, ERROR_MESSAGES.INVALID_NAME),
+      otherwise: (schema) => schema.optional()
+    }),
+  ContactLastName: yup.string()
+    .when('SubmissionType', {
+      is: 'family_member',
+      then: (schema) => schema
+        .required('Contact last name is required')
+        .matches(VALIDATION_PATTERNS.NAME, ERROR_MESSAGES.INVALID_NAME),
+      otherwise: (schema) => schema.optional()
+    }),
+  ContactEmail: yup.string()
+    .when('SubmissionType', {
+      is: 'family_member',
+      then: (schema) => schema
+        .required('Contact email is required')
+        .email(ERROR_MESSAGES.INVALID_EMAIL),
+      otherwise: (schema) => schema.optional()
+    }),
+  ContactHomePhone: yup.string()
+    .matches(VALIDATION_PATTERNS.HOME_PHONE, ERROR_MESSAGES.INVALID_PHONE)
+    .optional(),
+  ContactWorkPhone: yup.string()
+    .matches(VALIDATION_PATTERNS.WORK_PHONE, ERROR_MESSAGES.INVALID_PHONE)
+    .optional(),
+  ContactMobilePhone: yup.string()
+    .matches(VALIDATION_PATTERNS.MOBILE_PHONE, ERROR_MESSAGES.INVALID_PHONE)
+    .optional(),
+  ContactAddressLine1: yup.string()
+    .matches(VALIDATION_PATTERNS.ADDRESS_LINE, ERROR_MESSAGES.INVALID_ADDRESS)
+    .optional(),
+  ContactAddressLine2: yup.string()
+    .optional(),
+  ContactCity: yup.string()
+    .matches(VALIDATION_PATTERNS.CITY, ERROR_MESSAGES.INVALID_CITY)
+    .optional(),
+  ContactState: yup.string()
+    .matches(VALIDATION_PATTERNS.STATE, ERROR_MESSAGES.INVALID_STATE)
+    .optional(),
+  ContactZipCode: yup.string()
+    .matches(VALIDATION_PATTERNS.ZIP_CODE, ERROR_MESSAGES.INVALID_ZIP)
+    .optional(),
+}).required();
 
 /**
  * AppointmentForm Component
@@ -191,7 +189,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
     formState: { errors, isSubmitting: formSubmitting },
     reset,
   } = useForm<AppointmentFormData>({
-    resolver: yupResolver(createValidationSchema()),
+    resolver: yupResolver(validationSchema),
     defaultValues: {
       CommunityName: communityName,
       SubmissionType: 'self',
