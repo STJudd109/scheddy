@@ -99,6 +99,23 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   const defaultTheme = useTheme();
   const theme = { ...defaultTheme, ...customTheme };
   
+  // Log theme values for debugging
+  useEffect(() => {
+    console.log('[AppointmentForm] Theme values:', {
+      defaultTheme,
+      customTheme,
+      mergedTheme: theme,
+      primaryColor: theme.primaryColor,
+      buttonText: theme.buttonText
+    });
+    
+    // Check if CSS variables are set
+    if (typeof window !== 'undefined') {
+      const primaryColorVar = getComputedStyle(document.documentElement).getPropertyValue('--primary-color');
+      console.log('[AppointmentForm] CSS variable --primary-color:', primaryColorVar);
+    }
+  }, [theme, defaultTheme, customTheme]);
+  
   // Reference for Turnstile container
   const turnstileRef = useRef<HTMLDivElement>(null);
   
@@ -406,6 +423,20 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
       <p className="text-center mt-2">Submitting your request...</p>
     </div>
   );
+
+  // Decode URL-encoded button text if needed
+  const getButtonText = () => {
+    let text = theme.buttonText || 'Request Appointment';
+    // Check if the text contains URL encoding (like %20)
+    if (text.includes('%')) {
+      try {
+        text = decodeURIComponent(text);
+      } catch (e) {
+        console.error('[AppointmentForm] Error decoding button text:', e);
+      }
+    }
+    return isSubmitting ? 'Submitting...' : text;
+  };
 
   return (
     <div 
@@ -1027,6 +1058,14 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
           
           {/* Submit Button */}
           <div className="form-group submit-container mt-6">
+            {/* Debug logging for theme values */}
+            {process.env.NODE_ENV !== 'production' && (
+              <div className="debug-info mb-2 text-xs bg-gray-100 p-2 rounded">
+                <strong>Debug:</strong> primaryColor: {theme.primaryColor || 'undefined'}, 
+                buttonText: {theme.buttonText || 'undefined'}
+              </div>
+            )}
+            
             <button 
               type="submit" 
               disabled={isSubmitting || formSubmitting || (!!turnstileKey && !turnstileToken)}
@@ -1039,7 +1078,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
                 display: 'block'
               }}
             >
-              {isSubmitting ? 'Submitting...' : theme.buttonText || 'Request Appointment'}
+              {getButtonText()}
             </button>
           </div>
           
