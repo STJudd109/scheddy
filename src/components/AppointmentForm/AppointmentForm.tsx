@@ -66,8 +66,8 @@ interface AppointmentFormProps {
 // Form submission states
 type SubmissionState = 'idle' | 'submitting' | 'success' | 'error';
 
-// Static validation schema for the form
-const validationSchema = yup.object({
+// Static validation schema for the form with explicit typing for AppointmentFormData
+const validationSchema = yup.object<AppointmentFormData>({
   // Common fields for all submission types
   SubmissionType: yup.string().required('Please select who you are requesting for'),
   FirstName: yup.string()
