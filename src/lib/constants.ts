@@ -35,6 +35,19 @@ export const MARKET_SOURCE_OPTIONS = [
 ];
 
 /**
+ * Submission Type options for the dropdown
+ *
+ * Determines whether the request is for the resident/prospect themselves
+ * or on behalf of a family member / advocate.  The AppointmentForm uses
+ * this list to conditionally show contact-person fields when
+ * `family_member` is selected.
+ */
+export const SUBMISSION_TYPE_OPTIONS = [
+  { value: 'self',          label: 'I am requesting for myself' },
+  { value: 'family_member', label: 'I am requesting for a family member' },
+];
+
+/**
  * United States states and territories
  *
  * Two–letter postal abbreviations mapped to human-readable names, formatted

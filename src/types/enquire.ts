@@ -62,6 +62,49 @@ export interface EnquireAppointmentRequest {
 
   /** Additional notes or message from the prospect (stored in Enquire notes) */
   Message?: string;
+
+  /**
+   * ---------------------------------------------------------------
+   * Submission meta
+   * ---------------------------------------------------------------
+   */
+
+  /**
+   * Indicates who is filling out the form.
+   *  • "self"          – Prospect is requesting for themselves (default)
+   *  • "family_member" – A relative / advocate is filling the form
+   *
+   * When `"family_member"` is selected, the Contact* fields below SHOULD
+   * be populated so the community knows how to reach the primary contact.
+   */
+  SubmissionType?: 'self' | 'family_member';
+
+  /* ----------------------------  Primary Contact  --------------------------- */
+
+  /** Primary contact first name (only for family_member) */
+  ContactFirstName?: string;
+  /** Primary contact last name (only for family_member)  */
+  ContactLastName?: string;
+  /** Primary contact email (only for family_member)      */
+  ContactEmail?: string;
+
+  /** Primary contact home phone (only for family_member)   */
+  ContactHomePhone?: string;
+  /** Primary contact work phone (only for family_member)   */
+  ContactWorkPhone?: string;
+  /** Primary contact mobile phone (only for family_member) */
+  ContactMobilePhone?: string;
+
+  /** Primary contact street address line 1 (only for family_member) */
+  ContactAddressLine1?: string;
+  /** Primary contact street address line 2 (only for family_member) */
+  ContactAddressLine2?: string;
+  /** Primary contact city (only for family_member)                  */
+  ContactCity?: string;
+  /** Primary contact state / province (only for family_member)      */
+  ContactState?: string;
+  /** Primary contact ZIP / postal code (only for family_member)     */
+  ContactZipCode?: string;
   
   /** 
    * Optional referral type flag
@@ -175,6 +218,31 @@ export interface AppointmentFormData {
 
   /** Additional notes or message from the prospect */
   Message?: string;
+
+  /* ------------------------------------------------------------------
+   * Family-member submission support
+   * ------------------------------------------------------------------
+   * When SubmissionType === 'family_member', the following Contact*
+   * fields capture the PRIMARY CONTACT's details.  They are ignored
+   * (or may mirror prospect data) when SubmissionType === 'self'.
+   * ------------------------------------------------------------------ */
+
+  /** See EnquireAppointmentRequest for documentation */
+  SubmissionType?: 'self' | 'family_member';
+
+  ContactFirstName?: string;
+  ContactLastName?: string;
+  ContactEmail?: string;
+
+  ContactHomePhone?: string;
+  ContactWorkPhone?: string;
+  ContactMobilePhone?: string;
+
+  ContactAddressLine1?: string;
+  ContactAddressLine2?: string;
+  ContactCity?: string;
+  ContactState?: string;
+  ContactZipCode?: string;
   
   /** Any additional form fields */
   [key: string]: any;

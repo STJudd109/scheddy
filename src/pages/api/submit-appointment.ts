@@ -76,6 +76,8 @@ const VALIDATION_PATTERNS = {
   CITY: /^[a-zA-Z\s'-]{2,}$/,
   STATE: /^[A-Z]{2}$/,
   ZIP_CODE: /^\d{5}(-\d{4})?$/,
+  // Submission type validation
+  SUBMISSION_TYPE: /^(self|family_member)$/,
 };
 
 /**
@@ -170,6 +172,14 @@ function validateAppointmentData(data: any): { isValid: boolean; errors: Record<
     }
   }
 
+  // Validate SubmissionType
+  if (!data.SubmissionType) {
+    errors.SubmissionType = 'Submission type is required';
+  } else if (!VALIDATION_PATTERNS.SUBMISSION_TYPE.test(data.SubmissionType)) {
+    errors.SubmissionType = 'Invalid submission type';
+  }
+
+  // Resident/Prospect information (always required)
   if (!data.FirstName) {
     errors.FirstName = 'First name is required';
   } else if (!VALIDATION_PATTERNS.NAME.test(data.FirstName)) {
@@ -223,6 +233,57 @@ function validateAppointmentData(data: any): { isValid: boolean; errors: Record<
     errors.ZipCode = 'ZIP code format is invalid';
   }
 
+  // Contact fields validation (required when SubmissionType is 'family_member')
+  if (data.SubmissionType === 'family_member') {
+    // Required contact fields for family_member submissions
+    if (!data.ContactFirstName) {
+      errors.ContactFirstName = 'Contact first name is required';
+    } else if (!VALIDATION_PATTERNS.NAME.test(data.ContactFirstName)) {
+      errors.ContactFirstName = 'Contact first name contains invalid characters';
+    }
+
+    if (!data.ContactLastName) {
+      errors.ContactLastName = 'Contact last name is required';
+    } else if (!VALIDATION_PATTERNS.NAME.test(data.ContactLastName)) {
+      errors.ContactLastName = 'Contact last name contains invalid characters';
+    }
+
+    if (!data.ContactEmail) {
+      errors.ContactEmail = 'Contact email is required';
+    } else if (!VALIDATION_PATTERNS.EMAIL.test(data.ContactEmail)) {
+      errors.ContactEmail = 'Contact email format is invalid';
+    }
+
+    // Optional contact fields with format validation
+    if (data.ContactHomePhone && !VALIDATION_PATTERNS.HOME_PHONE.test(data.ContactHomePhone)) {
+      errors.ContactHomePhone = 'Contact home phone number format is invalid';
+    }
+
+    if (data.ContactWorkPhone && !VALIDATION_PATTERNS.WORK_PHONE.test(data.ContactWorkPhone)) {
+      errors.ContactWorkPhone = 'Contact work phone number format is invalid';
+    }
+
+    if (data.ContactMobilePhone && !VALIDATION_PATTERNS.MOBILE_PHONE.test(data.ContactMobilePhone)) {
+      errors.ContactMobilePhone = 'Contact mobile phone number format is invalid';
+    }
+
+    if (data.ContactAddressLine1 && !VALIDATION_PATTERNS.ADDRESS_LINE.test(data.ContactAddressLine1)) {
+      errors.ContactAddressLine1 = 'Contact address line 1 format is invalid';
+    }
+
+    if (data.ContactCity && !VALIDATION_PATTERNS.CITY.test(data.ContactCity)) {
+      errors.ContactCity = 'Contact city format is invalid';
+    }
+
+    if (data.ContactState && !VALIDATION_PATTERNS.STATE.test(data.ContactState)) {
+      errors.ContactState = 'Contact state should be a 2-letter code';
+    }
+
+    if (data.ContactZipCode && !VALIDATION_PATTERNS.ZIP_CODE.test(data.ContactZipCode)) {
+      errors.ContactZipCode = 'Contact ZIP code format is invalid';
+    }
+  }
+
   return {
     isValid: Object.keys(errors).length === 0,
     errors,
@@ -252,6 +313,8 @@ function transformFormData(
     // Add submission metadata
     SubmissionDate: new Date().toISOString(),
     SubmittedFrom: data.SubmittedFrom || 'API',
+    // Add submission type
+    SubmissionType: data.SubmissionType || 'self',
   };
 
   // Handle phone fields with backward compatibility
@@ -298,6 +361,53 @@ function transformFormData(
   
   if (data.ZipCode) {
     payload.ZipCode = data.ZipCode;
+  }
+
+  // Add contact fields if this is a family_member submission
+  if (data.SubmissionType === 'family_member') {
+    if (data.ContactFirstName) {
+      payload.ContactFirstName = capitalizeFirstLetter(data.ContactFirstName);
+    }
+    
+    if (data.ContactLastName) {
+      payload.ContactLastName = capitalizeFirstLetter(data.ContactLastName);
+    }
+    
+    if (data.ContactEmail) {
+      payload.ContactEmail = data.ContactEmail.toLowerCase().trim();
+    }
+    
+    if (data.ContactHomePhone) {
+      payload.ContactHomePhone = data.ContactHomePhone;
+    }
+    
+    if (data.ContactWorkPhone) {
+      payload.ContactWorkPhone = data.ContactWorkPhone;
+    }
+    
+    if (data.ContactMobilePhone) {
+      payload.ContactMobilePhone = data.ContactMobilePhone;
+    }
+    
+    if (data.ContactAddressLine1) {
+      payload.ContactAddressLine1 = data.ContactAddressLine1;
+    }
+    
+    if (data.ContactAddressLine2) {
+      payload.ContactAddressLine2 = data.ContactAddressLine2;
+    }
+    
+    if (data.ContactCity) {
+      payload.ContactCity = data.ContactCity;
+    }
+    
+    if (data.ContactState) {
+      payload.ContactState = data.ContactState;
+    }
+    
+    if (data.ContactZipCode) {
+      payload.ContactZipCode = data.ContactZipCode;
+    }
   }
 
   // Set ReferralType to 0 for global duplicate check if specified
@@ -493,11 +603,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Extract community name for logging
-    const { CommunityName, FirstName, LastName, turnstileToken } = req.body;
+    // Extract community name and submission type for logging
+    const { CommunityName, FirstName, LastName, SubmissionType, turnstileToken } = req.body;
     
     // Log the incoming request with community information
-    logger.info(`Received appointment request for ${FirstName} ${LastName} (Community: ${CommunityName || 'Not specified'})`);
+    logger.info(`Received appointment request for ${FirstName} ${LastName} (Community: ${CommunityName || 'Not specified'}, Type: ${SubmissionType || 'self'})`);
 
     /* ---------------------------------------------------------------
      * Turnstile verification (if enabled)
@@ -556,6 +666,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       message: status.message,
       isDuplicate: status.duplicate,
       community: CommunityName, // Include community name in response for client reference
+      submissionType: SubmissionType, // Include submission type in response
       data: response,
     });
   } catch (error) {
