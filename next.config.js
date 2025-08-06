@@ -26,6 +26,47 @@ const nextConfig = {
   distDir: 'out',
   // Disable source maps in production for smaller bundle size
   productionBrowserSourceMaps: false,
+
+  /**
+   * ------------------------------------------------------------------
+   * Custom HTTP headers
+   * ------------------------------------------------------------------
+   * We need the `/embed` page (and the static helper `/embed.js`) to be
+   * embeddable on *third-party* sites, so we explicitly override the
+   * default `X-Frame-Options: SAMEORIGIN` header that Next.js/Vercel adds.
+   *
+   * Security notes:
+   *  • We only relax the frame policy for these specific routes.
+   *  • A minimal Content-Security-Policy is added to be explicit.
+   */
+  async headers() {
+    return [
+      {
+        // The iframe page itself
+        source: '/embed',
+        headers: [
+          { key: 'X-Frame-Options', value: 'ALLOWALL' },
+          { key: 'Content-Security-Policy', value: "frame-ancestors *" },
+        ],
+      },
+      {
+        // When trailing slash handling rewrites to /embed/
+        source: '/embed/',
+        headers: [
+          { key: 'X-Frame-Options', value: 'ALLOWALL' },
+          { key: 'Content-Security-Policy', value: "frame-ancestors *" },
+        ],
+      },
+      {
+        // The static helper script
+        source: '/embed.js',
+        headers: [
+          { key: 'X-Frame-Options', value: 'ALLOWALL' },
+          { key: 'Content-Security-Policy', value: "frame-ancestors *" },
+        ],
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;
