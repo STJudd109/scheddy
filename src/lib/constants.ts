@@ -140,7 +140,10 @@ export const VALIDATION_PATTERNS = {
   //  • Letters, numbers, spaces
   //  • Common symbols: # (apt), - (ranges), . (abbr), () (unit), / (fractions), , (separators)
   //  • Minimum length: 2 characters
-  ADDRESS_LINE: /^[a-zA-Z0-9\\s#\\-.'(),\\/]{2,}$/,
+  // Note: inside a character class the dash (`-`) must be first or last (or escaped)
+  // and `\s` is **not** recognised, so we list a literal space instead.
+  // Allowed chars: letters, numbers, space, # . ' ( ) , / -
+  ADDRESS_LINE: /^[A-Za-z0-9 #'.(),\/-]{2,}$/,
   CITY: /^[a-zA-Z\\s'-]{2,}$/,                      // Letters, spaces, apostrophes, hyphens
   STATE: /^[A-Z]{2}$/,                              // 2-letter state code
 };
