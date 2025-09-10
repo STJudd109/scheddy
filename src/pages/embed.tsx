@@ -134,7 +134,11 @@ export default function EmbedPage() {
       window.parent.postMessage(
         JSON.stringify({
           type: 'formSubmitted',
-          data
+          data,
+          meta: {
+            community: sanitizedCommunity,
+            marketSource: resolvedMarketSource,
+          },
         }),
         '*'
       );
@@ -150,7 +154,29 @@ export default function EmbedPage() {
       window.parent.postMessage(
         JSON.stringify({
           type: 'formError',
-          error: error instanceof Error ? error.message : String(error)
+          error: error instanceof Error ? error.message : String(error),
+          meta: {
+            community: sanitizedCommunity,
+            marketSource: resolvedMarketSource,
+          },
+        }),
+        '*'
+      );
+    }
+  };
+
+  // Handle first user interaction inside the form
+  const handleFormInteraction = () => {
+    logger.debug('Form interacted');
+
+    if (typeof window.parent !== 'undefined') {
+      window.parent.postMessage(
+        JSON.stringify({
+          type: 'formInteracted',
+          meta: {
+            community: sanitizedCommunity,
+            marketSource: resolvedMarketSource,
+          },
         }),
         '*'
       );
@@ -244,6 +270,8 @@ export default function EmbedPage() {
               // Ensure MarketSource is set either from form input or query/default
               MarketSource: data.MarketSource || resolvedMarketSource,
             })}
+            /* Fire interaction callback so host pages can capture GTM events */
+            onInteraction={handleFormInteraction}
           />
         </ThemeProvider>
       </div>

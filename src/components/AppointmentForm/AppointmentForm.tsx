@@ -74,6 +74,10 @@ interface AppointmentFormProps {
   onSubmitSuccess?: (data: any) => void;
   onSubmitFailure?: (error: any) => void;
   beforeSubmitTransform?: (data: AppointmentFormData) => any;
+
+  /** Fires once (first user focus/click/keypress) so host pages can push a
+   *  “formInteracted” event to Google Tag Manager / Site Kit. */
+  onInteraction?: () => void;
 }
 
 // Form submission states
@@ -94,6 +98,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   onSubmitSuccess,
   onSubmitFailure,
   beforeSubmitTransform,
+  onInteraction,
 }) => {
   // Get theme from context or use provided theme
   const defaultTheme = useTheme();
@@ -178,6 +183,8 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   const [submissionState, setSubmissionState] = useState<SubmissionState>('idle');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  // Track first user interaction for analytics
+  const [hasInteracted, setHasInteracted] = useState<boolean>(false);
 
   /* ------------------------------------------------------------------
    * Debug / Dev – log validation errors whenever they appear so that
@@ -379,6 +386,12 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
 
   // Reset error state when user interacts with form again
   const handleFormInteraction = () => {
+    // Fire GTM-friendly callback once
+    if (!hasInteracted) {
+      setHasInteracted(true);
+      onInteraction?.();
+    }
+
     if (submissionState === 'error') {
       setSubmissionState('idle');
       setErrorMessage('');

@@ -31,6 +31,29 @@
     }
   };
 
+  /**
+   * Safely push an event to the Google Tag Manager / gtag dataLayer.
+   * Will initialise `window.dataLayer` if it does not exist.
+   *
+   * @param {string} eventName - The event name to push (e.g. 'appointment_form_submitted')
+   * @param {object} payload   - Additional properties to include with the event
+   */
+  function pushDataLayer(eventName, payload = {}) {
+    try {
+      if (typeof window === 'undefined') return;
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({
+        event: eventName,
+        ...payload,
+      });
+      if (config.debug) {
+        logger.info(`Pushed to dataLayer: ${eventName}`, payload);
+      }
+    } catch (err) {
+      logger.error('Failed pushing to dataLayer', err);
+    }
+  }
+
   // Get current script element
   const currentScript = document.currentScript || (function() {
     const scripts = document.getElementsByTagName('script');
@@ -188,6 +211,15 @@
           config.onSubmit(data.data);
         }
         logger.info('Form submitted successfully');
+
+        const meta = data.meta || {};
+        pushDataLayer('appointment_form_submitted', {
+          community: meta.community || config.communityName,
+          marketSource: meta.marketSource || config.marketSource,
+          referrer: meta.referrer || window.location.href,
+          origin: event.origin,
+          timestamp: Date.now(),
+        });
       }
       
       // Handle form errors
@@ -196,6 +228,28 @@
           config.onError(data.error);
         }
         logger.warn('Form submission error:', data.error);
+
+        const meta = data.meta || {};
+        pushDataLayer('appointment_form_error', {
+          community: meta.community || config.communityName,
+          marketSource: meta.marketSource || config.marketSource,
+          referrer: meta.referrer || window.location.href,
+          origin: event.origin,
+          error: data.error,
+          timestamp: Date.now(),
+        });
+      }
+
+      // Handle first interaction events
+      if (data.type === 'formInteracted') {
+        const meta = data.meta || {};
+        pushDataLayer('appointment_form_interacted', {
+          community: meta.community || config.communityName,
+          marketSource: meta.marketSource || config.marketSource,
+          referrer: meta.referrer || window.location.href,
+          origin: event.origin,
+          timestamp: Date.now(),
+        });
       }
     } catch (error) {
       logger.error('Error handling iframe message:', error);
