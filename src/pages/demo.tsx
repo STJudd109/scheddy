@@ -119,6 +119,29 @@ export default function DemoPage() {
     
     // Append to container
     iframeContainerRef.current.appendChild(iframe);
+
+    /* ----------------------------------------------------------
+     * Auto-resize handler – listens for postMessage events sent
+     * by the embedded form (`type:"resize", height`).
+     * -------------------------------------------------------- */
+    function onMessage(event: MessageEvent) {
+      try {
+        const data =
+          typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        if (data && data.type === 'resize' && data.height) {
+          iframe.style.height = `${Math.ceil(data.height)}px`;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    window.addEventListener('message', onMessage);
+    // Clean up when a new iframe is rendered
+    iframe.addEventListener('load', () => {
+      // ensure listener exists for future messages
+      window.addEventListener('message', onMessage);
+    });
   };
   
   // Generate the embed code for the current configuration
@@ -129,6 +152,10 @@ export default function DemoPage() {
   data-color="${community.color}"
   data-logo="${community.logo}"
   data-target="#appointment-form-container"
+  data-schedule-provider="calendly"
+  data-booking-url="https://calendly.com/your-link"
+  data-schedule-optional="true"
+  data-thankyou-suffix="/"
 ></script>
 
 <div id="appointment-form-container"></div>`;
@@ -217,6 +244,9 @@ AppointmentForm.reload({
                 <h2 className="text-xl font-semibold mb-4">
                   Preview for {selectedCommunity.name}
                 </h2>
+                <p className="text-sm text-gray-500 mb-6">
+                  (Iframe auto-resizes; wizard slides use smooth CSS ease-in transitions)
+                </p>
                 <p className="text-gray-600 mb-6">
                   {selectedCommunity.description}
                 </p>
