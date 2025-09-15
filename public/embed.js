@@ -164,6 +164,29 @@
     return url.toString();
   }
 
+  /**
+   * Waits for a DOM element to appear before continuing.
+   * Useful when the embed script is loaded before the target
+   * container is in the DOM.
+   *
+   * @param {string} selector CSS selector for the target element
+   * @param {number} timeoutMs How long to wait before giving up
+   * @param {number} intervalMs Poll interval
+   * @returns {Promise<HTMLElement|null>}
+   */
+  function waitForTarget(selector, timeoutMs = 8000, intervalMs = 100) {
+    return new Promise((resolve) => {
+      const start = Date.now();
+      const check = () => {
+        const el = document.querySelector(selector);
+        if (el) return resolve(el);
+        if (Date.now() - start >= timeoutMs) return resolve(null);
+        setTimeout(check, intervalMs);
+      };
+      check();
+    });
+  }
+
   // Create iframe element
   function createIframe() {
     const iframe = document.createElement('iframe');
@@ -190,32 +213,31 @@
       if (config.debug) {
         logger.info('Initializing with config:', config);
       }
-      
-      // Find target element
-      const targetSelector = config.target;
-      const targetElement = document.querySelector(targetSelector);
-      
-      if (!targetElement) {
-        return logger.error(`Target element not found: ${targetSelector}`);
-      }
-      
-      // Create and append iframe
-      const iframe = createIframe();
-      targetElement.appendChild(iframe);
 
-      // Lightweight log for non-debug mode
-      if (!config.debug) {
-        try {
-          console.info('[AppointmentForm] Embedding into', targetSelector, '→', iframe.src);
-        } catch (e) {/* noop */}
-      }
-      
-      // Set up message listener for iframe communication
-      if (config.autoResize) {
-        window.addEventListener('message', handleIframeMessage);
-      }
-      
-      logger.info(`Form embedded successfully for ${config.communityName}`);
+      const targetSelector = config.target;
+
+      waitForTarget(targetSelector).then((targetElement) => {
+        if (!targetElement) {
+          return logger.error(`Target element not found: ${targetSelector}`);
+        }
+
+        const iframe = createIframe();
+        targetElement.appendChild(iframe);
+
+        if (!config.debug) {
+          try {
+            console.info('[AppointmentForm] Embedding into', targetSelector, '→', iframe.src);
+          } catch (e) { /* noop */ }
+        }
+
+        if (config.autoResize) {
+          window.addEventListener('message', handleIframeMessage);
+        }
+
+        logger.info(`Form embedded successfully for ${config.communityName}`);
+      }).catch((error) => {
+        logger.error('Failed to initialize form:', error);
+      });
     } catch (error) {
       logger.error('Failed to initialize form:', error);
     }
