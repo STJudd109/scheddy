@@ -1730,7 +1730,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   };
 
   // Fallback (should not reach here)
-  return null;
+  return renderForm();
 };
 
 export default AppointmentForm;
