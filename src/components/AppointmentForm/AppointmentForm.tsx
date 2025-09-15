@@ -76,12 +76,21 @@ interface AppointmentFormProps {
   beforeSubmitTransform?: (data: AppointmentFormData) => any;
 
   /** Fires once (first user focus/click/keypress) so host pages can push a
-   *  “formInteracted” event to Google Tag Manager / Site Kit. */
+   *  "formInteracted" event to Google Tag Manager / Site Kit. */
   onInteraction?: () => void;
+  
+  // Wizard and scheduling configuration
+  schedulingUrl?: string;
+  schedulingProvider?: 'calendly' | 'calcom';
+  schedulingOptional?: boolean;
+  wizard?: boolean;
 }
 
 // Form submission states
 type SubmissionState = 'idle' | 'submitting' | 'success' | 'error';
+
+// Step types for the wizard
+type StepType = 'submission' | 'personal' | 'preferences' | 'schedule' | 'review';
 
 /**
  * AppointmentForm Component
@@ -99,10 +108,18 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   onSubmitFailure,
   beforeSubmitTransform,
   onInteraction,
+  schedulingUrl,
+  schedulingProvider = 'calendly',
+  schedulingOptional = true,
+  wizard = true,
 }) => {
   // Get theme from context or use provided theme
   const defaultTheme = useTheme();
   const theme = { ...defaultTheme, ...customTheme };
+  
+  // Wizard step state
+  const [currentStep, setCurrentStep] = useState<StepType>('submission');
+  const [stepHistory, setStepHistory] = useState<StepType[]>(['submission']);
   
   // Log theme values for debugging
   useEffect(() => {
@@ -185,6 +202,10 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   // Track first user interaction for analytics
   const [hasInteracted, setHasInteracted] = useState<boolean>(false);
+  
+  // Reference for scheduling iframe
+  const schedulingIframeRef = useRef<HTMLIFrameElement>(null);
+  const [schedulingComplete, setSchedulingComplete] = useState<boolean>(false);
 
   /* ------------------------------------------------------------------
    * Debug / Dev – log validation errors whenever they appear so that
@@ -320,6 +341,9 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
         globalDuplicateCheck,
         // Add Turnstile token if available
         turnstileToken: turnstileToken || undefined,
+        // Add scheduling information if completed
+        SchedulingCompleted: schedulingComplete,
+        SchedulingProvider: schedulingComplete ? schedulingProvider : undefined,
       };
       
       // Apply custom transformation if provided
@@ -397,6 +421,103 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
       setErrorMessage('');
     }
   };
+  
+  // Handle step navigation
+  const goToNextStep = async () => {
+    // Validate current step before proceeding
+    let canProceed = true;
+    
+    if (currentStep === 'submission') {
+      // Validate submission type is selected
+      canProceed = await trigger('SubmissionType');
+    }
+    else if (currentStep === 'personal') {
+      // Validate required personal fields
+      canProceed = await trigger(['FirstName', 'LastName']);
+      
+      // If family member, also validate contact fields
+      if (canProceed && submissionType === 'family_member') {
+        canProceed = await trigger(['ContactFirstName', 'ContactLastName', 'ContactEmail']);
+      }
+    }
+    
+    if (!canProceed) return;
+    
+    // Determine next step
+    let nextStep: StepType;
+    switch (currentStep) {
+      case 'submission':
+        nextStep = 'personal';
+        break;
+      case 'personal':
+        nextStep = 'preferences';
+        break;
+      case 'preferences':
+        nextStep = schedulingUrl ? 'schedule' : 'review';
+        break;
+      case 'schedule':
+        nextStep = 'review';
+        break;
+      default:
+        nextStep = 'review';
+    }
+    
+    // Update step state
+    setCurrentStep(nextStep);
+    setStepHistory([...stepHistory, nextStep]);
+  };
+  
+  const goToPreviousStep = () => {
+    if (stepHistory.length <= 1) return;
+    
+    // Remove current step from history
+    const newHistory = [...stepHistory];
+    newHistory.pop();
+    
+    // Set current step to the previous one
+    const previousStep = newHistory[newHistory.length - 1];
+    setCurrentStep(previousStep);
+    setStepHistory(newHistory);
+  };
+  
+  // Skip scheduling step
+  const skipScheduling = () => {
+    if (currentStep === 'schedule') {
+      setCurrentStep('review');
+      setStepHistory([...stepHistory, 'review']);
+    }
+  };
+  
+  // Handle scheduling completion
+  const handleSchedulingComplete = () => {
+    setSchedulingComplete(true);
+    goToNextStep();
+  };
+  
+  // Load scheduling provider script
+  useEffect(() => {
+    if (!schedulingUrl || currentStep !== 'schedule') return;
+    
+    if (schedulingProvider === 'calendly') {
+      // Load Calendly script if not already loaded
+      if (!document.getElementById('calendly-script')) {
+        const script = document.createElement('script');
+        script.id = 'calendly-script';
+        script.src = 'https://assets.calendly.com/assets/external/widget.js';
+        script.async = true;
+        document.head.appendChild(script);
+      }
+    } else if (schedulingProvider === 'calcom') {
+      // Load Cal.com script if not already loaded
+      if (!document.getElementById('calcom-script')) {
+        const script = document.createElement('script');
+        script.id = 'calcom-script';
+        script.src = 'https://cal.com/embed.js';
+        script.async = true;
+        document.head.appendChild(script);
+      }
+    }
+  }, [schedulingUrl, schedulingProvider, currentStep]);
 
   // Success message component
   const SuccessMessage = () => (
@@ -450,32 +571,64 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
     }
     return isSubmitting ? 'Submitting...' : text;
   };
-
-  return (
-    <div 
-      className="appointment-form-container" 
-      onClick={handleFormInteraction}
-      style={{
-        '--primary-color': theme.primaryColor,
-        '--secondary-color': theme.secondaryColor,
-        fontFamily: theme.fontFamily,
-      } as React.CSSProperties}
-    >
-      {theme.logoUrl && (
-        <div className="logo-container">
-          <img src={theme.logoUrl} alt={`${communityName} logo`} className="community-logo" />
-        </div>
-      )}
-      
-      <h2 className="text-2xl font-medium text-center mb-6 text-primary">Request an Appointment</h2>
-      
-      {submissionState === 'success' ? (
-        <SuccessMessage />
-      ) : submissionState === 'error' ? (
-        <ErrorMessage />
-      ) : submissionState === 'submitting' ? (
-        <LoadingIndicator />
-      ) : (
+  
+  // Scheduling step component
+  const SchedulingStep = () => {
+    if (!schedulingUrl) return null;
+    
+    return (
+      <div className="scheduling-step">
+        <h3 className="text-2xl font-medium mb-6 text-center">Schedule Your Visit</h3>
+        <p className="text-center mb-6">Please select a date and time for your visit.</p>
+        
+        {schedulingProvider === 'calendly' && (
+          <div 
+            className="calendly-inline-widget" 
+            data-url={schedulingUrl}
+            style={{ minWidth: '320px', height: '580px' }}
+          ></div>
+        )}
+        
+        {schedulingProvider === 'calcom' && (
+          <div 
+            className="cal-inline-widget" 
+            data-cal-link={schedulingUrl}
+            style={{ minWidth: '320px', height: '580px' }}
+          ></div>
+        )}
+        
+        {schedulingOptional && (
+          <div className="text-center mt-4">
+            <button
+              type="button"
+              onClick={skipScheduling}
+              className="text-gray-500 underline hover:text-gray-700"
+            >
+              Skip scheduling for now
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+  
+  // Render the form with wizard if enabled
+  const renderForm = () => {
+    if (submissionState === 'success') {
+      return <SuccessMessage />;
+    } 
+    
+    if (submissionState === 'error') {
+      return <ErrorMessage />;
+    } 
+    
+    if (submissionState === 'submitting') {
+      return <LoadingIndicator />;
+    }
+    
+    if (!wizard) {
+      // Render the original form without wizard
+      return (
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="animate-fade-in">
           {/* Hidden Community Name field */}
           <input type="hidden" {...register('CommunityName')} value={communityName} />
@@ -1100,7 +1253,446 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
             By submitting this form, you agree to our privacy policy and consent to be contacted regarding your request.
           </div>
         </form>
+      );
+    }
+    
+    // Render the wizard form
+    return (
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="animate-fade-in">
+        {/* Hidden Community Name field */}
+        <input type="hidden" {...register('CommunityName')} value={communityName} />
+        
+        <div className="wizard">
+          <div className="slides" style={{ transform: `translateX(-${stepHistory.indexOf(currentStep) * 100}%)` }}>
+            {/* Step 1: Submission Type */}
+            <div className={`slide ${currentStep === 'submission' ? 'active' : ''}`}>
+              <h2 className="text-2xl font-medium mb-6 text-center">
+                We would love to have you tour our community.
+              </h2>
+              <h3 className="text-xl mb-6 text-center">
+                Could you please tell me who is interested in moving to {communityName}?
+              </h3>
+              
+              <div className="form-group mb-6">
+                <Controller
+                  name="SubmissionType"
+                  control={control}
+                  rules={{ required: 'Please select who this appointment is for' }}
+                  render={({ field }) => (
+                    <div className="flex flex-col gap-4">
+                      {SUBMISSION_TYPE_OPTIONS.map(option => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => {
+                            field.onChange(option.value);
+                            setTimeout(goToNextStep, 100);
+                          }}
+                          className="w-full py-3 px-4 font-medium text-white rounded-md transition-colors hover:opacity-90"
+                          style={{ backgroundColor: theme.primaryColor || '#0066cc' }}
+                        >
+                          {option.value === 'self' ? 'Myself' : 'Family Member'}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                />
+                {errors.SubmissionType && (
+                  <span className="error-text text-center block mt-4" role="alert">
+                    {errors.SubmissionType.message}
+                  </span>
+                )}
+              </div>
+            </div>
+            
+            {/* Step 2: Personal Information */}
+            <div className={`slide ${currentStep === 'personal' ? 'active' : ''}`}>
+              <h2 className="text-2xl font-medium mb-6 text-center">
+                Please provide {submissionType === 'family_member' ? 'their' : 'your'} information
+              </h2>
+              
+              <div className="form-group mb-4">
+                <label htmlFor="FirstName" className="block mb-2 font-medium text-gray-700">
+                  First Name <span className="text-error">*</span>
+                </label>
+                <input
+                  id="FirstName"
+                  type="text"
+                  {...register('FirstName', { required: 'First name is required' })}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                    errors.FirstName ? 'border-error focus:ring-error' : 'border-gray-300'
+                  }`}
+                  aria-invalid={errors.FirstName ? 'true' : 'false'}
+                />
+                {errors.FirstName && (
+                  <span className="error-text" role="alert">{errors.FirstName.message}</span>
+                )}
+              </div>
+              
+              <div className="form-group mb-4">
+                <label htmlFor="LastName" className="block mb-2 font-medium text-gray-700">
+                  Last Name <span className="text-error">*</span>
+                </label>
+                <input
+                  id="LastName"
+                  type="text"
+                  {...register('LastName', { required: 'Last name is required' })}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                    errors.LastName ? 'border-error focus:ring-error' : 'border-gray-300'
+                  }`}
+                  aria-invalid={errors.LastName ? 'true' : 'false'}
+                />
+                {errors.LastName && (
+                  <span className="error-text" role="alert">{errors.LastName.message}</span>
+                )}
+              </div>
+              
+              <div className="form-group mb-4">
+                <label htmlFor="Email" className="block mb-2 font-medium text-gray-700">
+                  Email
+                </label>
+                <input
+                  id="Email"
+                  type="email"
+                  {...register('Email')}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                    errors.Email ? 'border-error focus:ring-error' : 'border-gray-300'
+                  }`}
+                  aria-invalid={errors.Email ? 'true' : 'false'}
+                />
+                {errors.Email && (
+                  <span className="error-text" role="alert">{errors.Email.message}</span>
+                )}
+              </div>
+              
+              <div className="form-group mb-4">
+                <label htmlFor="HomePhone" className="block mb-2 font-medium text-gray-700">
+                  Phone Number <span className="text-error">*</span>
+                </label>
+                <input
+                  id="HomePhone"
+                  type="tel"
+                  {...register('HomePhone')}
+                  placeholder="(123) 456-7890"
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                    errors.HomePhone ? 'border-error focus:ring-error' : 'border-gray-300'
+                  }`}
+                  aria-invalid={errors.HomePhone ? 'true' : 'false'}
+                />
+                {errors.HomePhone && (
+                  <span className="error-text" role="alert">{errors.HomePhone.message}</span>
+                )}
+              </div>
+              
+              {/* Primary Contact Information - Only shown when submissionType is 'family_member' */}
+              {submissionType === 'family_member' && (
+                <div className="mt-8 mb-4">
+                  <h3 className="text-lg font-medium mb-4 text-gray-700">Your Contact Information</h3>
+                  
+                  <div className="form-group mb-4">
+                    <label htmlFor="ContactFirstName" className="block mb-2 font-medium text-gray-700">
+                      Your First Name <span className="text-error">*</span>
+                    </label>
+                    <input
+                      id="ContactFirstName"
+                      type="text"
+                      {...register('ContactFirstName', { required: 'Your first name is required' })}
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                        errors.ContactFirstName ? 'border-error focus:ring-error' : 'border-gray-300'
+                      }`}
+                      aria-invalid={errors.ContactFirstName ? 'true' : 'false'}
+                    />
+                    {errors.ContactFirstName && (
+                      <span className="error-text" role="alert">{errors.ContactFirstName.message}</span>
+                    )}
+                  </div>
+                  
+                  <div className="form-group mb-4">
+                    <label htmlFor="ContactLastName" className="block mb-2 font-medium text-gray-700">
+                      Your Last Name <span className="text-error">*</span>
+                    </label>
+                    <input
+                      id="ContactLastName"
+                      type="text"
+                      {...register('ContactLastName', { required: 'Your last name is required' })}
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                        errors.ContactLastName ? 'border-error focus:ring-error' : 'border-gray-300'
+                      }`}
+                      aria-invalid={errors.ContactLastName ? 'true' : 'false'}
+                    />
+                    {errors.ContactLastName && (
+                      <span className="error-text" role="alert">{errors.ContactLastName.message}</span>
+                    )}
+                  </div>
+                  
+                  <div className="form-group mb-4">
+                    <label htmlFor="ContactEmail" className="block mb-2 font-medium text-gray-700">
+                      Your Email <span className="text-error">*</span>
+                    </label>
+                    <input
+                      id="ContactEmail"
+                      type="email"
+                      {...register('ContactEmail', { required: 'Your email is required' })}
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                        errors.ContactEmail ? 'border-error focus:ring-error' : 'border-gray-300'
+                      }`}
+                      aria-invalid={errors.ContactEmail ? 'true' : 'false'}
+                    />
+                    {errors.ContactEmail && (
+                      <span className="error-text" role="alert">{errors.ContactEmail.message}</span>
+                    )}
+                  </div>
+                  
+                  <div className="form-group mb-4">
+                    <label htmlFor="ContactHomePhone" className="block mb-2 font-medium text-gray-700">
+                      Your Phone Number <span className="text-error">*</span>
+                    </label>
+                    <input
+                      id="ContactHomePhone"
+                      type="tel"
+                      {...register('ContactHomePhone')}
+                      placeholder="(123) 456-7890"
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                        errors.ContactHomePhone ? 'border-error focus:ring-error' : 'border-gray-300'
+                      }`}
+                      aria-invalid={errors.ContactHomePhone ? 'true' : 'false'}
+                    />
+                    {errors.ContactHomePhone && (
+                      <span className="error-text" role="alert">{errors.ContactHomePhone.message}</span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Step 3: Preferences */}
+            <div className={`slide ${currentStep === 'preferences' ? 'active' : ''}`}>
+              <h2 className="text-2xl font-medium mb-6 text-center">
+                What is {submissionType === 'family_member' ? 'their' : 'your'} timeline for potentially making a move?
+              </h2>
+              
+              <div className="form-group mb-8">
+                <div className="flex flex-col gap-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const formData = getValues();
+                      formData.Message = (formData.Message || '') + '\nTimeline: Immediately';
+                      goToNextStep();
+                    }}
+                    className="w-full py-3 px-4 font-medium text-white rounded-md transition-colors hover:opacity-90"
+                    style={{ backgroundColor: theme.primaryColor || '#0066cc' }}
+                  >
+                    Immediately
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const formData = getValues();
+                      formData.Message = (formData.Message || '') + '\nTimeline: 1-3 Months';
+                      goToNextStep();
+                    }}
+                    className="w-full py-3 px-4 font-medium text-white rounded-md transition-colors hover:opacity-90"
+                    style={{ backgroundColor: theme.primaryColor || '#0066cc' }}
+                  >
+                    1 - 3 Months
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const formData = getValues();
+                      formData.Message = (formData.Message || '') + '\nTimeline: 3+ Months';
+                      goToNextStep();
+                    }}
+                    className="w-full py-3 px-4 font-medium text-white rounded-md transition-colors hover:opacity-90"
+                    style={{ backgroundColor: theme.primaryColor || '#0066cc' }}
+                  >
+                    3 Months +
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const formData = getValues();
+                      formData.Message = (formData.Message || '') + '\nTimeline: Just Researching';
+                      goToNextStep();
+                    }}
+                    className="w-full py-3 px-4 font-medium text-white rounded-md transition-colors hover:opacity-90"
+                    style={{ backgroundColor: theme.primaryColor || '#0066cc' }}
+                  >
+                    Just Researching
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            {/* Step 4: Scheduling */}
+            <div className={`slide ${currentStep === 'schedule' ? 'active' : ''}`}>
+              {schedulingUrl ? (
+                <SchedulingStep />
+              ) : (
+                <div className="text-center">
+                  <h3 className="text-2xl font-medium mb-6">No scheduling options available</h3>
+                  <button
+                    type="button"
+                    onClick={goToNextStep}
+                    className="mt-4 py-3 px-6 font-medium text-white rounded-md transition-colors hover:opacity-90"
+                    style={{ backgroundColor: theme.primaryColor || '#0066cc' }}
+                  >
+                    Continue
+                  </button>
+                </div>
+              )}
+            </div>
+            
+            {/* Step 5: Review and Submit */}
+            <div className={`slide ${currentStep === 'review' ? 'active' : ''}`}>
+              <h2 className="text-2xl font-medium mb-6 text-center">
+                Please review and submit your request
+              </h2>
+              
+              <div className="mb-6">
+                <h3 className="text-lg font-medium mb-3">Contact Information</h3>
+                <p>
+                  <strong>Name:</strong> {getValues('FirstName')} {getValues('LastName')}
+                </p>
+                {getValues('Email') && (
+                  <p><strong>Email:</strong> {getValues('Email')}</p>
+                )}
+                <p>
+                  <strong>Phone:</strong> {getValues('HomePhone') || getValues('MobilePhone') || getValues('WorkPhone')}
+                </p>
+                
+                {submissionType === 'family_member' && (
+                  <div className="mt-4">
+                    <h3 className="text-lg font-medium mb-2">Your Information</h3>
+                    <p>
+                      <strong>Name:</strong> {getValues('ContactFirstName')} {getValues('ContactLastName')}
+                    </p>
+                    <p><strong>Email:</strong> {getValues('ContactEmail')}</p>
+                    <p>
+                      <strong>Phone:</strong> {getValues('ContactHomePhone') || getValues('ContactMobilePhone') || getValues('ContactWorkPhone')}
+                    </p>
+                  </div>
+                )}
+              </div>
+              
+              {/* Scheduling status */}
+              {schedulingUrl && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-medium mb-2">Scheduling Status</h3>
+                  <p>
+                    {schedulingComplete ? (
+                      <span className="text-green-600">✓ Appointment scheduled</span>
+                    ) : (
+                      <span className="text-gray-500">No appointment scheduled</span>
+                    )}
+                  </p>
+                </div>
+              )}
+              
+              {/* Cloudflare Turnstile */}
+              {turnstileKey && (
+                <div className="form-group turnstile-container mt-6 mb-6">
+                  <div 
+                    id="cf-turnstile" 
+                    ref={turnstileRef}
+                    className="flex justify-center"
+                  ></div>
+                  {!turnstileToken && (
+                    <span className="error-text text-center block mt-2" role="alert">
+                      Please complete the security check
+                    </span>
+                  )}
+                </div>
+              )}
+              
+              {/* Submit Button */}
+              <div className="form-group submit-container mt-6">
+                <button 
+                  type="submit" 
+                  disabled={isSubmitting || formSubmitting || (!!turnstileKey && !turnstileToken)}
+                  className="w-full py-3 px-4 font-medium text-white rounded-md transition-colors hover:opacity-90 disabled:opacity-70 disabled:cursor-not-allowed embedded-submit-button"
+                  style={{ 
+                    backgroundColor: theme.primaryColor || '#0066cc',
+                    color: '#ffffff'
+                  }}
+                >
+                  {getButtonText()}
+                </button>
+              </div>
+              
+              {/* Privacy notice */}
+              <div className="mt-4 text-center text-sm text-gray-500">
+                By submitting this form, you agree to our privacy policy and consent to be contacted regarding your request.
+              </div>
+            </div>
+          </div>
+          
+          {/* Navigation buttons */}
+          {currentStep !== 'review' && currentStep !== 'submission' && (
+            <div className="wizard-navigation mt-6 flex justify-between">
+              <button
+                type="button"
+                onClick={goToPreviousStep}
+                className="py-2 px-4 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
+                Back
+              </button>
+              
+              <button
+                type="button"
+                onClick={goToNextStep}
+                className="py-2 px-4 font-medium text-white rounded-md transition-colors hover:opacity-90"
+                style={{ backgroundColor: theme.primaryColor || '#0066cc' }}
+                disabled={isSubmitting || formSubmitting}
+              >
+                Next
+              </button>
+            </div>
+          )}
+          
+          {currentStep === 'submission' && (
+            <div className="wizard-navigation mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={goToNextStep}
+                className="py-2 px-4 font-medium text-white rounded-md transition-colors hover:opacity-90"
+                style={{ backgroundColor: theme.primaryColor || '#0066cc' }}
+                disabled={isSubmitting || formSubmitting}
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
+      </form>
+    );
+  };
+
+  return (
+    <div 
+      className="appointment-form-container" 
+      onClick={handleFormInteraction}
+      style={{
+        '--primary-color': theme.primaryColor,
+        '--secondary-color': theme.secondaryColor,
+        fontFamily: theme.fontFamily,
+      } as React.CSSProperties}
+    >
+      {theme.logoUrl && (
+        <div className="logo-container">
+          <img src={theme.logoUrl} alt={`${communityName} logo`} className="community-logo" />
+        </div>
       )}
+      
+      <h2 className="text-2xl font-medium text-center mb-6 text-primary">
+        {currentStep === 'submission' ? 'Request an Appointment' : ''}
+      </h2>
+      
+      {renderForm()}
       
       {/* Add CSS for smooth transitions */}
       <style jsx>{`
@@ -1220,6 +1812,28 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
         input, select, textarea {
           background-color: #ffffff !important;
           color: #333333 !important;
+        }
+        
+        /* Wizard styles */
+        .wizard {
+          width: 100%;
+          overflow: hidden;
+        }
+        
+        .slides {
+          display: flex;
+          transition: transform 0.5s ease-in-out;
+          width: 100%;
+        }
+        
+        .slide {
+          flex: 0 0 100%;
+          padding: 1rem;
+          width: 100%;
+        }
+        
+        .slide.active {
+          display: block;
         }
       `}</style>
     </div>

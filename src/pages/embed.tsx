@@ -40,6 +40,14 @@ export default function EmbedPage() {
     buttonText,
     marketSource,
     referrer,
+    /* ----------  New scheduling / redirect params  ---------- */
+    scheduleProvider,
+    provider,
+    bookingUrl,
+    scheduleUrl,
+    scheduleOptional,
+    thankYouUrl,
+    thankYouSuffix,
     // capture any unnamed query param as potential community code
     ...restParams
   } = router.query as Record<string, string | string[] | undefined>;
@@ -80,6 +88,40 @@ export default function EmbedPage() {
     }
     return 'Website';
   }, [marketSource]);
+
+  /* ------------------------------------------------------------------
+   * Scheduling & redirect helpers
+   * ------------------------------------------------------------------ */
+  // Determine scheduling url (allow bookingUrl or scheduleUrl alias)
+  const resolvedSchedulingUrl = React.useMemo(() => {
+    const url = (bookingUrl || scheduleUrl) as string | undefined;
+    return typeof url === 'string' && url.trim().length ? decodeURIComponent(url.trim()) : undefined;
+  }, [bookingUrl, scheduleUrl]);
+
+  // Determine provider (explicit scheduleProvider > provider > default 'calendly')
+  const resolvedSchedulingProvider = React.useMemo(() => {
+    const prov = (scheduleProvider || provider) as string | undefined;
+    return prov === 'calcom' ? 'calcom' : 'calendly';
+  }, [scheduleProvider, provider]);
+
+  // Optional flag (default true)
+  const resolvedSchedulingOptional = React.useMemo(() => {
+    if (typeof scheduleOptional === 'string') {
+      return scheduleOptional !== 'false' && scheduleOptional !== '0';
+    }
+    return true;
+  }, [scheduleOptional]);
+
+  // Thank-you redirect handling
+  const resolvedThankYou = React.useMemo(() => {
+    if (typeof thankYouUrl === 'string' && thankYouUrl.trim()) {
+      return decodeURIComponent(thankYouUrl.trim());
+    }
+    const suffix = typeof thankYouSuffix === 'string' && thankYouSuffix.trim()
+      ? thankYouSuffix.trim()
+      : '/thankyou';
+    return suffix.startsWith('/') ? suffix : `/${suffix}`;
+  }, [thankYouUrl, thankYouSuffix]);
 
   // Only run after router is ready and query params are available
   useEffect(() => {
@@ -139,6 +181,15 @@ export default function EmbedPage() {
             community: sanitizedCommunity,
             marketSource: resolvedMarketSource,
           },
+        }),
+        '*'
+      );
+      // Also instruct parent to redirect
+      window.parent.postMessage(
+        JSON.stringify({
+          type: 'redirect',
+          url: resolvedThankYou,
+          mode: thankYouUrl ? 'absolute' : 'suffix',
         }),
         '*'
       );
@@ -272,6 +323,10 @@ export default function EmbedPage() {
             })}
             /* Fire interaction callback so host pages can capture GTM events */
             onInteraction={handleFormInteraction}
+            /* --------------  Scheduling / wizard props -------------- */
+            schedulingUrl={resolvedSchedulingUrl}
+            schedulingProvider={resolvedSchedulingProvider}
+            schedulingOptional={resolvedSchedulingOptional}
           />
         </ThemeProvider>
       </div>
