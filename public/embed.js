@@ -73,6 +73,16 @@
     buttonText: currentScript.getAttribute('data-button-text') || 'Request Appointment',
     // New: marketing attribution
     marketSource: currentScript.getAttribute('data-market-source') || 'Website',
+
+    /* -------------  Scheduling / redirect additions  -------------- */
+    scheduleProvider: currentScript.getAttribute('data-schedule-provider') ||
+                      currentScript.getAttribute('data-provider') || '',
+    bookingUrl: currentScript.getAttribute('data-booking-url') ||
+                currentScript.getAttribute('data-schedule-url') || '',
+    scheduleOptional: currentScript.getAttribute('data-schedule-optional') || '',
+    thankYouUrl: currentScript.getAttribute('data-thankyou-url') || '',
+    thankYouSuffix: currentScript.getAttribute('data-thankyou-suffix') || '/thankyou',
+
     height: currentScript.getAttribute('data-height') || 'auto',
     width: currentScript.getAttribute('data-width') || '100%',
     
@@ -130,6 +140,23 @@
     
     // Add referrer information
     url.searchParams.append('referrer', encodeURIComponent(window.location.href));
+
+    /* ----------  New scheduling / redirect params ---------- */
+    if (config.scheduleProvider) {
+      url.searchParams.append('scheduleProvider', encodeURIComponent(config.scheduleProvider));
+    }
+    if (config.bookingUrl) {
+      url.searchParams.append('bookingUrl', encodeURIComponent(config.bookingUrl));
+    }
+    if (config.scheduleOptional) {
+      url.searchParams.append('scheduleOptional', encodeURIComponent(config.scheduleOptional));
+    }
+    if (config.thankYouUrl) {
+      url.searchParams.append('thankYouUrl', encodeURIComponent(config.thankYouUrl));
+    }
+    if (config.thankYouSuffix) {
+      url.searchParams.append('thankYouSuffix', encodeURIComponent(config.thankYouSuffix));
+    }
     
     return url.toString();
   }
@@ -220,6 +247,13 @@
           origin: event.origin,
           timestamp: Date.now(),
         });
+
+          /* Push default GA/GTM form event */
+          pushDataLayer('form_submit', {
+            community: meta.community || config.communityName,
+            marketSource: meta.marketSource || config.marketSource,
+            referrer: meta.referrer || window.location.href,
+          });
       }
       
       // Handle form errors
@@ -238,6 +272,22 @@
           error: data.error,
           timestamp: Date.now(),
         });
+      }
+
+      // Handle host-page redirect instructions
+      if (data.type === 'redirect' && data.url) {
+        try {
+          const redirectUrl = data.url;
+          // absolute if starts with http/https OR explicit mode === 'absolute'
+          if (data.mode === 'absolute' || /^https?:\/\//i.test(redirectUrl)) {
+            window.location.href = redirectUrl;
+          } else {
+            // treat as suffix / relative path
+            window.location.href = redirectUrl;
+          }
+        } catch (err) {
+          logger.error('Failed to process redirect message', err);
+        }
       }
 
       // Handle first interaction events
