@@ -1269,13 +1269,24 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
     }
     
     // Render the wizard form
+    // ------------------------------------------------------------------
+    // Stable slide indexing to avoid peeking/overflow issues
+    // ------------------------------------------------------------------
+    const stepOrder: StepType[] = schedulingUrl
+      ? ['submission', 'personal', 'preferences', 'schedule', 'review']
+      : ['submission', 'personal', 'preferences', 'review'];
+    const slideIndex = stepOrder.indexOf(currentStep);
+
     return (
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="animate-fade-in">
         {/* Hidden Community Name field */}
         <input type="hidden" {...register('CommunityName')} value={communityName} />
         
         <div className="wizard">
-          <div className="slides" style={{ transform: `translateX(-${stepHistory.indexOf(currentStep) * 100}%)` }}>
+          <div
+            className="slides"
+            style={{ transform: `translateX(-${(slideIndex >= 0 ? slideIndex : 0) * 100}%)` }}
+          >
             {/* Step 1: Submission Type */}
             <div className={`slide ${currentStep === 'submission' ? 'active' : ''}`}>
               <h2 className="text-2xl font-medium mb-6 text-center">

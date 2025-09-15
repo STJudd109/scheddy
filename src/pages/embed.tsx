@@ -305,7 +305,8 @@ export default function EmbedPage() {
         `}</style>
       </Head>
       
-      <div ref={containerRef} className="embed-container">
+      {/* Mark as embedded so global CSS can apply full-width rules */}
+      <div ref={containerRef} className="embed-container embedded">
         {/* Provide theme via Context so CSS variables are set for embedded iframe */}
         <ThemeProvider theme={theme}>
           <AppointmentForm
