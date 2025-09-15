@@ -25,13 +25,30 @@
   --border-radius: 0.25rem;
   --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   --form-spacing: 1rem;
+
+  /* ------------------------------------------------------------
+   * shadcn/ui design-token aliases mapped to existing variables
+   * ---------------------------------------------------------- */
+  --background: #ffffff;
+  --foreground: #111827;
+  --primary: var(--primary-color);
+  --primary-foreground: #ffffff;
+  --secondary: var(--secondary-color);
+  --secondary-foreground: var(--text-color);
+  --muted: #f3f4f6;
+  --muted-foreground: #6b7280;
+  --border: #e5e7eb;
+  --input: #e5e7eb;
+  --ring: var(--primary-color);
 }
 
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900;
+    /* Use mapped tokens with Tailwind fall-backs */
+    @apply text-gray-900;
+    background-color: var(--background);
     font-family: var(--font-family);
-    color: var(--text-color);
+    color: var(--foreground);
   }
   
   h1, h2, h3, h4, h5, h6 {
