@@ -84,7 +84,9 @@
     // Default redirect now points to root ("/") instead of "/thankyou"
     thankYouSuffix: currentScript.getAttribute('data-thankyou-suffix') || '/',
 
-    height: currentScript.getAttribute('data-height') || 'auto',
+    // Default iframe height set to a reasonable 600 px; can be overridden via
+    // `data-height` on the script tag.
+    height: currentScript.getAttribute('data-height') || '600px',
     width: currentScript.getAttribute('data-width') || '100%',
     
     // Advanced options
@@ -116,47 +118,47 @@
     const url = new URL('/embed', config.baseUrl);
     
     // Add parameters to URL
-    url.searchParams.append('community', encodeURIComponent(config.communityName));
+    url.searchParams.append('community', config.communityName);
     
     if (config.primaryColor) {
-      url.searchParams.append('primaryColor', encodeURIComponent(config.primaryColor));
+      url.searchParams.append('primaryColor', config.primaryColor);
     }
     
     if (config.secondaryColor) {
-      url.searchParams.append('secondaryColor', encodeURIComponent(config.secondaryColor));
+      url.searchParams.append('secondaryColor', config.secondaryColor);
     }
     
     if (config.logoUrl) {
-      url.searchParams.append('logoUrl', encodeURIComponent(config.logoUrl));
+      url.searchParams.append('logoUrl', config.logoUrl);
     }
     
     if (config.buttonText) {
-      url.searchParams.append('buttonText', encodeURIComponent(config.buttonText));
+      url.searchParams.append('buttonText', config.buttonText);
     }
     
     // Always include Market Source (falls back to "Website")
     if (config.marketSource) {
-      url.searchParams.append('marketSource', encodeURIComponent(config.marketSource));
+      url.searchParams.append('marketSource', config.marketSource);
     }
     
     // Add referrer information
-    url.searchParams.append('referrer', encodeURIComponent(window.location.href));
+    url.searchParams.append('referrer', window.location.href);
 
     /* ----------  New scheduling / redirect params ---------- */
     if (config.scheduleProvider) {
-      url.searchParams.append('scheduleProvider', encodeURIComponent(config.scheduleProvider));
+      url.searchParams.append('scheduleProvider', config.scheduleProvider);
     }
     if (config.bookingUrl) {
-      url.searchParams.append('bookingUrl', encodeURIComponent(config.bookingUrl));
+      url.searchParams.append('bookingUrl', config.bookingUrl);
     }
     if (config.scheduleOptional) {
-      url.searchParams.append('scheduleOptional', encodeURIComponent(config.scheduleOptional));
+      url.searchParams.append('scheduleOptional', config.scheduleOptional);
     }
     if (config.thankYouUrl) {
-      url.searchParams.append('thankYouUrl', encodeURIComponent(config.thankYouUrl));
+      url.searchParams.append('thankYouUrl', config.thankYouUrl);
     }
     if (config.thankYouSuffix) {
-      url.searchParams.append('thankYouSuffix', encodeURIComponent(config.thankYouSuffix));
+      url.searchParams.append('thankYouSuffix', config.thankYouSuffix);
     }
     
     return url.toString();
@@ -200,6 +202,13 @@
       // Create and append iframe
       const iframe = createIframe();
       targetElement.appendChild(iframe);
+
+      // Lightweight log for non-debug mode
+      if (!config.debug) {
+        try {
+          console.info('[AppointmentForm] Embedding into', targetSelector, '→', iframe.src);
+        } catch (e) {/* noop */}
+      }
       
       // Set up message listener for iframe communication
       if (config.autoResize) {
