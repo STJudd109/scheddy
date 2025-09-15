@@ -368,18 +368,18 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
       if (!response.ok) {
         throw new Error(result.message || 'Failed to submit appointment request');
       }
-      
+
       // Handle successful submission
       if (result.success) {
         setSubmissionState('success');
         reset(); // Clear form
         console.log('[AppointmentForm] Submission success', result);
-        
+
         if (onSubmitSuccess) {
           onSubmitSuccess(result.data);
         }
-        
-        // Redirect after delay only if not embedded
+
+        // Redirect when not embedded
         if (!isEmbedded() && redirectPath) {
           setTimeout(() => {
             window.location.href = redirectPath;
@@ -597,8 +597,20 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
           ></div>
         )}
         
-        {schedulingOptional && (
-          <div className="text-center mt-4">
+        {/* Action buttons */}
+        <div className="text-center mt-4 flex flex-col items-center gap-3">
+          {/* Primary continue button – always present so users can progress */}
+          <button
+            type="button"
+            onClick={goToNextStep}
+            className="py-2 px-6 font-medium text-white rounded-md transition-colors hover:opacity-90"
+            style={{ backgroundColor: theme.primaryColor || '#0066cc' }}
+          >
+            Continue
+          </button>
+
+          {/* Optional skip link – only rendered when schedulingOptional === true */}
+          {schedulingOptional && (
             <button
               type="button"
               onClick={skipScheduling}
@@ -606,8 +618,8 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
             >
               Skip scheduling for now
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     );
   };
