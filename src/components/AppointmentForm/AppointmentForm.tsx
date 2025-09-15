@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useForm, Controller, SubmitHandler, useWatch } from 'react-hook-form';
 import { useTheme, Theme } from '../ThemeProvider';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Modal } from '../ui/modal';
 import { 
   CARE_TYPE_OPTIONS, 
   MARKET_SOURCE_OPTIONS, 
@@ -121,6 +123,9 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   const [currentStep, setCurrentStep] = useState<StepType>('submission');
   const [stepHistory, setStepHistory] = useState<StepType[]>(['submission']);
   
+  // Schedule modal state
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  
   // Log theme values for debugging
   useEffect(() => {
     console.log('[AppointmentForm] Theme values:', {
@@ -216,6 +221,13 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
       logFormError('validation-error', errors);
     }
   }, [errors]);
+  
+  // Auto-open modal on entering schedule step
+  useEffect(() => {
+    if (currentStep === 'schedule' && schedulingUrl) {
+      setIsScheduleModalOpen(true);
+    }
+  }, [currentStep, schedulingUrl]);
   
   // Load Turnstile script and initialize
   useEffect(() => {
@@ -494,9 +506,9 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
     goToNextStep();
   };
   
-  // Load scheduling provider script
+  // Load scheduling provider script when modal opens
   useEffect(() => {
-    if (!schedulingUrl || currentStep !== 'schedule') return;
+    if (!schedulingUrl || !isScheduleModalOpen) return;
     
     if (schedulingProvider === 'calendly') {
       // Load Calendly script if not already loaded
@@ -517,7 +529,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
         document.head.appendChild(script);
       }
     }
-  }, [schedulingUrl, schedulingProvider, currentStep]);
+  }, [schedulingUrl, schedulingProvider, isScheduleModalOpen]);
 
   // Success message component
   const SuccessMessage = () => (
@@ -581,32 +593,16 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
         <h3 className="text-2xl font-medium mb-6 text-center">Schedule Your Visit</h3>
         <p className="text-center mb-6">Please select a date and time for your visit.</p>
         
-        {schedulingProvider === 'calendly' && (
-          <div 
-            className="calendly-inline-widget" 
-            data-url={schedulingUrl}
-            style={{ minWidth: '320px', height: '580px' }}
-          ></div>
-        )}
-        
-        {schedulingProvider === 'calcom' && (
-          <div 
-            className="cal-inline-widget" 
-            data-cal-link={schedulingUrl}
-            style={{ minWidth: '320px', height: '580px' }}
-          ></div>
-        )}
-        
         {/* Action buttons */}
         <div className="text-center mt-4 flex flex-col items-center gap-3">
-          {/* Primary continue button – always present so users can progress */}
+          {/* Primary button to open scheduling modal */}
           <button
             type="button"
-            onClick={goToNextStep}
+            onClick={() => setIsScheduleModalOpen(true)}
             className="py-2 px-6 font-medium text-white rounded-md transition-colors hover:opacity-90"
             style={{ backgroundColor: theme.primaryColor || '#0066cc' }}
           >
-            Continue
+            Schedule Now
           </button>
 
           {/* Optional skip link – only rendered when schedulingOptional === true */}
@@ -620,6 +616,57 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
             </button>
           )}
         </div>
+        
+        {/* Scheduling Modal */}
+        <Modal 
+          open={isScheduleModalOpen} 
+          onClose={() => setIsScheduleModalOpen(false)}
+          title="Schedule Your Visit"
+        >
+          {schedulingProvider === 'calendly' && (
+            <div 
+              className="calendly-inline-widget" 
+              data-url={schedulingUrl}
+              style={{ minWidth: '320px', height: '580px' }}
+            ></div>
+          )}
+          
+          {schedulingProvider === 'calcom' && (
+            <div 
+              className="cal-inline-widget" 
+              data-cal-link={schedulingUrl}
+              style={{ minWidth: '320px', height: '580px' }}
+            ></div>
+          )}
+          
+          <div className="mt-4 flex justify-center gap-4">
+            <button
+              type="button"
+              onClick={() => {
+                setIsScheduleModalOpen(false);
+                setSchedulingComplete(true);
+                goToNextStep();
+              }}
+              className="py-2 px-6 font-medium text-white rounded-md transition-colors hover:opacity-90"
+              style={{ backgroundColor: theme.primaryColor || '#0066cc' }}
+            >
+              Done
+            </button>
+            
+            {schedulingOptional && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsScheduleModalOpen(false);
+                  skipScheduling();
+                }}
+                className="py-2 px-6 text-gray-500 hover:text-gray-700"
+              >
+                Skip
+              </button>
+            )}
+          </div>
+        </Modal>
       </div>
     );
   };
@@ -1268,27 +1315,17 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
       );
     }
     
-    // Render the wizard form
-    // ------------------------------------------------------------------
     // Stable slide indexing to avoid peeking/overflow issues
-    // ------------------------------------------------------------------
     const stepOrder: StepType[] = schedulingUrl
       ? ['submission', 'personal', 'preferences', 'schedule', 'review']
       : ['submission', 'personal', 'preferences', 'review'];
-    const slideIndex = stepOrder.indexOf(currentStep);
-
-    return (
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="animate-fade-in">
-        {/* Hidden Community Name field */}
-        <input type="hidden" {...register('CommunityName')} value={communityName} />
-        
-        <div className="wizard">
-          <div
-            className="slides"
-            style={{ transform: `translateX(-${(slideIndex >= 0 ? slideIndex : 0) * 100}%)` }}
-          >
-            {/* Step 1: Submission Type */}
-            <div className={`slide ${currentStep === 'submission' ? 'active' : ''}`}>
+    
+    // Helper to render the current step content
+    const renderStepContent = () => {
+      switch(currentStep) {
+        case 'submission':
+          return (
+            <>
               <h2 className="text-2xl font-medium mb-6 text-center">
                 We would love to have you tour our community.
               </h2>
@@ -1326,10 +1363,11 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
                   </span>
                 )}
               </div>
-            </div>
-            
-            {/* Step 2: Personal Information */}
-            <div className={`slide ${currentStep === 'personal' ? 'active' : ''}`}>
+            </>
+          );
+        case 'personal':
+          return (
+            <>
               <h2 className="text-2xl font-medium mb-6 text-center">
                 Please provide {submissionType === 'family_member' ? 'their' : 'your'} information
               </h2>
@@ -1486,10 +1524,11 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
                   </div>
                 </div>
               )}
-            </div>
-            
-            {/* Step 3: Preferences */}
-            <div className={`slide ${currentStep === 'preferences' ? 'active' : ''}`}>
+            </>
+          );
+        case 'preferences':
+          return (
+            <>
               <h2 className="text-2xl font-medium mb-6 text-center">
                 What is {submissionType === 'family_member' ? 'their' : 'your'} timeline for potentially making a move?
               </h2>
@@ -1549,29 +1588,13 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
                   </button>
                 </div>
               </div>
-            </div>
-            
-            {/* Step 4: Scheduling */}
-            <div className={`slide ${currentStep === 'schedule' ? 'active' : ''}`}>
-              {schedulingUrl ? (
-                <SchedulingStep />
-              ) : (
-                <div className="text-center">
-                  <h3 className="text-2xl font-medium mb-6">No scheduling options available</h3>
-                  <button
-                    type="button"
-                    onClick={goToNextStep}
-                    className="mt-4 py-3 px-6 font-medium text-white rounded-md transition-colors hover:opacity-90"
-                    style={{ backgroundColor: theme.primaryColor || '#0066cc' }}
-                  >
-                    Continue
-                  </button>
-                </div>
-              )}
-            </div>
-            
-            {/* Step 5: Review and Submit */}
-            <div className={`slide ${currentStep === 'review' ? 'active' : ''}`}>
+            </>
+          );
+        case 'schedule':
+          return <SchedulingStep />;
+        case 'review':
+          return (
+            <>
               <h2 className="text-2xl font-medium mb-6 text-center">
                 Please review and submit your request
               </h2>
@@ -1651,216 +1674,63 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
               <div className="mt-4 text-center text-sm text-gray-500">
                 By submitting this form, you agree to our privacy policy and consent to be contacted regarding your request.
               </div>
+            </>
+          );
+        default:
+          return null;
+      }
+    };
+    
+    return (
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="animate-fade-in">
+        {/* Hidden Community Name field */}
+        <input type="hidden" {...register('CommunityName')} value={communityName} />
+        
+        <AnimatePresence mode="wait">
+          <motion.div 
+            key={currentStep} 
+            initial={{ opacity: 0, x: 24 }} 
+            animate={{ opacity: 1, x: 0 }} 
+            exit={{ opacity: 0, x: -24 }}
+            className="p-4"
+          >
+            {renderStepContent()}
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Wizard navigation (outside of animated panel) */}
+        {currentStep !== 'review' && (
+          <div className="wizard-navigation mt-6 flex justify-between">
+            <div>
+              {currentStep !== 'submission' && (
+                <button
+                  type="button"
+                  onClick={goToPreviousStep}
+                  className="py-2 px-4 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  Back
+                </button>
+              )}
+            </div>
+            <div>
+              <button
+                type="button"
+                onClick={goToNextStep}
+                className="py-2 px-4 font-medium text-white rounded-md transition-colors hover:opacity-90"
+                style={{ backgroundColor: theme.primaryColor || '#0066cc' }}
+                disabled={isSubmitting || formSubmitting}
+              >
+                Next
+              </button>
             </div>
           </div>
-          
-          {/* Navigation buttons */}
-          {currentStep !== 'review' && currentStep !== 'submission' && (
-            <div className="wizard-navigation mt-6 flex justify-between">
-              <button
-                type="button"
-                onClick={goToPreviousStep}
-                className="py-2 px-4 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-              >
-                Back
-              </button>
-              
-              <button
-                type="button"
-                onClick={goToNextStep}
-                className="py-2 px-4 font-medium text-white rounded-md transition-colors hover:opacity-90"
-                style={{ backgroundColor: theme.primaryColor || '#0066cc' }}
-                disabled={isSubmitting || formSubmitting}
-              >
-                Next
-              </button>
-            </div>
-          )}
-          
-          {currentStep === 'submission' && (
-            <div className="wizard-navigation mt-6 flex justify-end">
-              <button
-                type="button"
-                onClick={goToNextStep}
-                className="py-2 px-4 font-medium text-white rounded-md transition-colors hover:opacity-90"
-                style={{ backgroundColor: theme.primaryColor || '#0066cc' }}
-                disabled={isSubmitting || formSubmitting}
-              >
-                Next
-              </button>
-            </div>
-          )}
-        </div>
+        )}
       </form>
     );
   };
 
-  return (
-    <div 
-      className="appointment-form-container" 
-      onClick={handleFormInteraction}
-      style={{
-        '--primary-color': theme.primaryColor,
-        '--secondary-color': theme.secondaryColor,
-        fontFamily: theme.fontFamily,
-      } as React.CSSProperties}
-    >
-      {theme.logoUrl && (
-        <div className="logo-container">
-          <img src={theme.logoUrl} alt={`${communityName} logo`} className="community-logo" />
-        </div>
-      )}
-      
-      <h2 className="text-2xl font-medium text-center mb-6 text-primary">
-        {currentStep === 'submission' ? 'Request an Appointment' : ''}
-      </h2>
-      
-      {renderForm()}
-      
-      {/* Add CSS for smooth transitions */}
-      <style jsx>{`
-        .form-row {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 1rem;
-        }
-        
-        .animate-fade-in {
-          animation: fadeIn 0.3s ease-in-out;
-        }
-        
-        .animate-pulse-slow {
-          animation: pulse 2s infinite;
-        }
-        
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.6; }
-        }
-        
-        details summary::-webkit-details-marker {
-          display: none;
-        }
-        
-        details summary::before {
-          content: '▶';
-          display: inline-block;
-          margin-right: 0.5rem;
-          transition: transform 0.3s;
-        }
-        
-        details[open] summary::before {
-          transform: rotate(90deg);
-        }
-        
-        details[open] > div {
-          animation: slideDown 0.3s ease-in-out;
-        }
-        
-        @keyframes slideDown {
-          from { opacity: 0; transform: translateY(-10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        
-        /* Super aggressive button styling for embedded contexts */
-        .appointment-form-container .submit-container .embedded-submit-button,
-        .appointment-form-container form .embedded-submit-button,
-        button.embedded-submit-button,
-        input[type="submit"].embedded-submit-button {
-          opacity: 1 !important;
-          visibility: visible !important;
-          display: block !important;
-          z-index: 100 !important;
-          position: relative !important;
-          background-color: var(--primary-color, #0066cc) !important;
-          color: #ffffff !important;
-          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
-          transform: translateZ(0) !important;
-          -webkit-transform: translateZ(0) !important;
-          -webkit-appearance: none !important;
-          appearance: none !important;
-          border: 2px solid transparent !important;
-          outline: none !important;
-          text-shadow: none !important;
-          font-weight: 600 !important;
-          font-family: inherit !important;
-          text-decoration: none !important;
-          line-height: 1.5 !important;
-          letter-spacing: normal !important;
-          text-transform: none !important;
-          transition: background-color 0.2s ease-in-out !important;
-        }
-
-        /* Hover and focus states */
-        .appointment-form-container .submit-container .embedded-submit-button:hover,
-        .appointment-form-container form .embedded-submit-button:hover,
-        button.embedded-submit-button:hover,
-        input[type="submit"].embedded-submit-button:hover,
-        .appointment-form-container .submit-container .embedded-submit-button:focus,
-        .appointment-form-container form .embedded-submit-button:focus,
-        button.embedded-submit-button:focus,
-        input[type="submit"].embedded-submit-button:focus {
-          background-color: var(--primary-color, #0066cc) !important;
-          color: #ffffff !important;
-          opacity: 0.9 !important;
-          border-color: transparent !important;
-          outline: none !important;
-        }
-
-        /* Disabled state */
-        .appointment-form-container .submit-container .embedded-submit-button:disabled,
-        .appointment-form-container form .embedded-submit-button:disabled,
-        button.embedded-submit-button:disabled,
-        input[type="submit"].embedded-submit-button:disabled {
-          opacity: 0.7 !important;
-          cursor: not-allowed !important;
-          background-color: var(--primary-color, #0066cc) !important;
-          color: #ffffff !important;
-        }
-        
-        /* Make sure error text is visible */
-        .error-text {
-          color: #dc3545;
-          font-size: 0.875rem;
-          margin-top: 0.25rem;
-          display: block;
-        }
-        
-        /* Ensure form controls have proper contrast */
-        input, select, textarea {
-          background-color: #ffffff !important;
-          color: #333333 !important;
-        }
-        
-        /* Wizard styles */
-        .wizard {
-          width: 100%;
-          overflow: hidden;
-        }
-        
-        .slides {
-          display: flex;
-          transition: transform 0.5s ease-in-out;
-          width: 100%;
-        }
-        
-        .slide {
-          flex: 0 0 100%;
-          padding: 1rem;
-          width: 100%;
-        }
-        
-        .slide.active {
-          display: block;
-        }
-      `}</style>
-    </div>
-  );
+  // Fallback (should not reach here)
+  return null;
 };
 
 export default AppointmentForm;
