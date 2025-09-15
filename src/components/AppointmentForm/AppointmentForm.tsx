@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useForm, Controller, SubmitHandler, useWatch } from 'react-hook-form';
 import { useTheme, Theme } from '../ThemeProvider';
 import { 
@@ -117,9 +117,24 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   const defaultTheme = useTheme();
   const theme = { ...defaultTheme, ...customTheme };
   
+  // Define steps array based on schedulingUrl presence
+  const steps = useMemo(() => {
+    const baseSteps: StepType[] = ['submission', 'personal', 'preferences'];
+    if (schedulingUrl) {
+      baseSteps.push('schedule');
+    }
+    baseSteps.push('review');
+    return baseSteps;
+  }, [schedulingUrl]);
+  
   // Wizard step state
   const [currentStep, setCurrentStep] = useState<StepType>('submission');
   const [stepHistory, setStepHistory] = useState<StepType[]>(['submission']);
+  
+  // Compute current index for transform
+  const currentIndex = useMemo(() => {
+    return steps.indexOf(currentStep);
+  }, [steps, currentStep]);
   
   // Log theme values for debugging
   useEffect(() => {
@@ -387,12 +402,12 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
         }
       } else {
         // API returned success: false
-        throw new Error(result.message || ERROR_MESSAGES.SUBMISSION_FAILED);
-      }
-      
-    } catch (error) {
-      logFormError('submit', error);
-      setSubmissionState('error');
+      `}</style>
+    </div>
+  );
+};
+
+export default AppointmentForm;
       
       const errorMsg = error instanceof Error 
         ? error.message 
@@ -462,29 +477,32 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
         nextStep = 'review';
     }
     
-    // Update step state
+    // Update step state with functional updates
     setCurrentStep(nextStep);
-    setStepHistory([...stepHistory, nextStep]);
+    setStepHistory(prev => [...prev, nextStep]);
   };
   
   const goToPreviousStep = () => {
     if (stepHistory.length <= 1) return;
     
-    // Remove current step from history
-    const newHistory = [...stepHistory];
-    newHistory.pop();
-    
-    // Set current step to the previous one
-    const previousStep = newHistory[newHistory.length - 1];
-    setCurrentStep(previousStep);
-    setStepHistory(newHistory);
+    // Remove current step from history using functional update
+    setStepHistory(prev => {
+      const newHistory = [...prev];
+      newHistory.pop();
+      
+      // Set current step to the previous one
+      const previousStep = newHistory[newHistory.length - 1];
+      setCurrentStep(previousStep);
+      
+      return newHistory;
+    });
   };
   
   // Skip scheduling step
   const skipScheduling = () => {
     if (currentStep === 'schedule') {
       setCurrentStep('review');
-      setStepHistory([...stepHistory, 'review']);
+      setStepHistory(prev => [...prev, 'review']);
     }
   };
   
@@ -578,8 +596,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
     
     return (
       <div className="scheduling-step">
-        <h3 className="text-2xl font-medium mb-6 text-center">Schedule Your Visit</h3>
-        <p className="text-center mb-6">Please select a date and time for your visit.</p>
+        <p className="text-center mb-4">Please select a date and time for your visit.</p>
         
         {schedulingProvider === 'calendly' && (
           <div 
@@ -1275,15 +1292,19 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
         <input type="hidden" {...register('CommunityName')} value={communityName} />
         
         <div className="wizard">
-          <div className="slides" style={{ transform: `translateX(-${stepHistory.indexOf(currentStep) * 100}%)` }}>
+          <div className="slides" style={{ 
+            transform: `translateX(-${currentIndex * 100}%)`,
+            width: `${steps.length * 100}%`,
+            willChange: 'transform'
+          }}>
             {/* Step 1: Submission Type */}
             <div className={`slide ${currentStep === 'submission' ? 'active' : ''}`}>
-              <h2 className="text-2xl font-medium mb-6 text-center">
+              <p className="text-center mb-4">
                 We would love to have you tour our community.
-              </h2>
-              <h3 className="text-xl mb-6 text-center">
+              </p>
+              <p className="text-center mb-4">
                 Could you please tell me who is interested in moving to {communityName}?
-              </h3>
+              </p>
               
               <div className="form-group mb-6">
                 <Controller
@@ -1319,9 +1340,9 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
             
             {/* Step 2: Personal Information */}
             <div className={`slide ${currentStep === 'personal' ? 'active' : ''}`}>
-              <h2 className="text-2xl font-medium mb-6 text-center">
+              <p className="text-center mb-4">
                 Please provide {submissionType === 'family_member' ? 'their' : 'your'} information
-              </h2>
+              </p>
               
               <div className="form-group mb-4">
                 <label htmlFor="FirstName" className="block mb-2 font-medium text-gray-700">
@@ -1479,9 +1500,9 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
             
             {/* Step 3: Preferences */}
             <div className={`slide ${currentStep === 'preferences' ? 'active' : ''}`}>
-              <h2 className="text-2xl font-medium mb-6 text-center">
+              <p className="text-center mb-4">
                 What is {submissionType === 'family_member' ? 'their' : 'your'} timeline for potentially making a move?
-              </h2>
+              </p>
               
               <div className="form-group mb-8">
                 <div className="flex flex-col gap-4">
@@ -1546,7 +1567,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
                 <SchedulingStep />
               ) : (
                 <div className="text-center">
-                  <h3 className="text-2xl font-medium mb-6">No scheduling options available</h3>
+                  <p className="text-center mb-4">No scheduling options available</p>
                   <button
                     type="button"
                     onClick={goToNextStep}
@@ -1561,9 +1582,9 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
             
             {/* Step 5: Review and Submit */}
             <div className={`slide ${currentStep === 'review' ? 'active' : ''}`}>
-              <h2 className="text-2xl font-medium mb-6 text-center">
+              <p className="text-center mb-4">
                 Please review and submit your request
-              </h2>
+              </p>
               
               <div className="mb-6">
                 <h3 className="text-lg font-medium mb-3">Contact Information</h3>
@@ -1834,22 +1855,20 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
         
         .slides {
           display: flex;
-          transition: transform 0.5s ease-in-out;
-          width: 100%;
+          transition: transform 300ms ease-in-out;
+          will-change: transform;
         }
-        
+
+        /* -----------------------------------------------------------
+         * Each slide takes full width so translateX works in %
+         * --------------------------------------------------------- */
         .slide {
           flex: 0 0 100%;
-          padding: 1rem;
           width: 100%;
+          padding: 1rem;
         }
-        
-        .slide.active {
-          display: block;
-        }
-      `}</style>
-    </div>
-  );
-};
 
-export default AppointmentForm;
+        /* (Optional) hide inactive slides’ overflow to avoid bleed */
+        .wizard .slide:not(.active) {
+          overflow: hidden;
+        }
