@@ -10,7 +10,8 @@ import {
   ERROR_MESSAGES,
   DEFAULT_CONFIG,
   US_STATES,
-  SUBMISSION_TYPE_OPTIONS
+  SUBMISSION_TYPE_OPTIONS,
+  DEFAULT_SCHEDULING_URL
 } from '../../lib/constants';
 import type { AppointmentFormData } from '../../types/enquire';
 
@@ -110,7 +111,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   onSubmitFailure,
   beforeSubmitTransform,
   onInteraction,
-  schedulingUrl,
+  schedulingUrl = DEFAULT_SCHEDULING_URL,
   schedulingProvider = 'calendly',
   schedulingOptional = true,
   wizard = true,
