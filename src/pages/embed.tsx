@@ -119,7 +119,7 @@ export default function EmbedPage() {
     }
     const suffix = typeof thankYouSuffix === 'string' && thankYouSuffix.trim()
       ? thankYouSuffix.trim()
-      : '/thankyou';
+      : '/';
     return suffix.startsWith('/') ? suffix : `/${suffix}`;
   }, [thankYouUrl, thankYouSuffix]);
 

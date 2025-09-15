@@ -81,7 +81,8 @@
                 currentScript.getAttribute('data-schedule-url') || '',
     scheduleOptional: currentScript.getAttribute('data-schedule-optional') || '',
     thankYouUrl: currentScript.getAttribute('data-thankyou-url') || '',
-    thankYouSuffix: currentScript.getAttribute('data-thankyou-suffix') || '/thankyou',
+    // Default redirect now points to root ("/") instead of "/thankyou"
+    thankYouSuffix: currentScript.getAttribute('data-thankyou-suffix') || '/',
 
     height: currentScript.getAttribute('data-height') || 'auto',
     width: currentScript.getAttribute('data-width') || '100%',
