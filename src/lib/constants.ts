@@ -174,6 +174,11 @@ export const DEFAULT_CONFIG = {
 };
 
 /**
+ * Default scheduling URL for Calendly integration
+ */
+export const DEFAULT_SCHEDULING_URL = 'https://calendly.com/spencerj-thrivelayer/30min';
+
+/**
  * Default theme values
  */
 export const DEFAULT_THEME = {

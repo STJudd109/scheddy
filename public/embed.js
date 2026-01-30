@@ -73,7 +73,20 @@
     buttonText: currentScript.getAttribute('data-button-text') || 'Request Appointment',
     // New: marketing attribution
     marketSource: currentScript.getAttribute('data-market-source') || 'Website',
-    height: currentScript.getAttribute('data-height') || 'auto',
+
+    /* -------------  Scheduling / redirect additions  -------------- */
+    scheduleProvider: currentScript.getAttribute('data-schedule-provider') ||
+                      currentScript.getAttribute('data-provider') || '',
+    bookingUrl: currentScript.getAttribute('data-booking-url') ||
+                currentScript.getAttribute('data-schedule-url') || '',
+    scheduleOptional: currentScript.getAttribute('data-schedule-optional') || '',
+    thankYouUrl: currentScript.getAttribute('data-thankyou-url') || '',
+    // Default redirect now points to root ("/") instead of "/thankyou"
+    thankYouSuffix: currentScript.getAttribute('data-thankyou-suffix') || '/',
+
+    // Default iframe height set to a reasonable 600 px; can be overridden via
+    // `data-height` on the script tag.
+    height: currentScript.getAttribute('data-height') || '600px',
     width: currentScript.getAttribute('data-width') || '100%',
     
     // Advanced options
@@ -105,33 +118,73 @@
     const url = new URL('/embed', config.baseUrl);
     
     // Add parameters to URL
-    url.searchParams.append('community', encodeURIComponent(config.communityName));
+    url.searchParams.append('community', config.communityName);
     
     if (config.primaryColor) {
-      url.searchParams.append('primaryColor', encodeURIComponent(config.primaryColor));
+      url.searchParams.append('primaryColor', config.primaryColor);
     }
     
     if (config.secondaryColor) {
-      url.searchParams.append('secondaryColor', encodeURIComponent(config.secondaryColor));
+      url.searchParams.append('secondaryColor', config.secondaryColor);
     }
     
     if (config.logoUrl) {
-      url.searchParams.append('logoUrl', encodeURIComponent(config.logoUrl));
+      url.searchParams.append('logoUrl', config.logoUrl);
     }
     
     if (config.buttonText) {
-      url.searchParams.append('buttonText', encodeURIComponent(config.buttonText));
+      url.searchParams.append('buttonText', config.buttonText);
     }
     
     // Always include Market Source (falls back to "Website")
     if (config.marketSource) {
-      url.searchParams.append('marketSource', encodeURIComponent(config.marketSource));
+      url.searchParams.append('marketSource', config.marketSource);
     }
     
     // Add referrer information
-    url.searchParams.append('referrer', encodeURIComponent(window.location.href));
+    url.searchParams.append('referrer', window.location.href);
+
+    /* ----------  New scheduling / redirect params ---------- */
+    if (config.scheduleProvider) {
+      url.searchParams.append('scheduleProvider', config.scheduleProvider);
+    }
+    if (config.bookingUrl) {
+      url.searchParams.append('bookingUrl', config.bookingUrl);
+    }
+    if (config.scheduleOptional) {
+      url.searchParams.append('scheduleOptional', config.scheduleOptional);
+    }
+    if (config.thankYouUrl) {
+      url.searchParams.append('thankYouUrl', config.thankYouUrl);
+    }
+    if (config.thankYouSuffix) {
+      url.searchParams.append('thankYouSuffix', config.thankYouSuffix);
+    }
     
     return url.toString();
+  }
+
+  /**
+   * Waits for a DOM element to appear before continuing.
+   * Useful when the embed script is loaded before the target
+   * container is in the DOM.
+   *
+   * @param {string} selector CSS selector for the target element
+   * @param {number} timeoutMs How long to wait before giving up
+   * @param {number} intervalMs Poll interval
+   * @returns {Promise<HTMLElement|null>}
+   */
+  function waitForTarget(selector, timeoutMs = 8000, intervalMs = 100) {
+    return new Promise((resolve) => {
+      const start = Date.now();
+      const check = () => {
+        const el = document.querySelector(selector);
+        if (el) return resolve(el);
+        if (Date.now() - start >= timeoutMs) return resolve(null);
+        setTimeout(check, intervalMs);
+      };
+      check();
+    });
   }
 
   // Create iframe element
@@ -160,25 +213,31 @@
       if (config.debug) {
         logger.info('Initializing with config:', config);
       }
-      
-      // Find target element
+
       const targetSelector = config.target;
-      const targetElement = document.querySelector(targetSelector);
-      
-      if (!targetElement) {
-        return logger.error(`Target element not found: ${targetSelector}`);
-      }
-      
-      // Create and append iframe
-      const iframe = createIframe();
-      targetElement.appendChild(iframe);
-      
-      // Set up message listener for iframe communication
-      if (config.autoResize) {
-        window.addEventListener('message', handleIframeMessage);
-      }
-      
-      logger.info(`Form embedded successfully for ${config.communityName}`);
+
+      waitForTarget(targetSelector).then((targetElement) => {
+        if (!targetElement) {
+          return logger.error(`Target element not found: ${targetSelector}`);
+        }
+
+        const iframe = createIframe();
+        targetElement.appendChild(iframe);
+
+        if (!config.debug) {
+          try {
+            console.info('[AppointmentForm] Embedding into', targetSelector, '→', iframe.src);
+          } catch (e) { /* noop */ }
+        }
+
+        if (config.autoResize) {
+          window.addEventListener('message', handleIframeMessage);
+        }
+
+        logger.info(`Form embedded successfully for ${config.communityName}`);
+      }).catch((error) => {
+        logger.error('Failed to initialize form:', error);
+      });
     } catch (error) {
       logger.error('Failed to initialize form:', error);
     }
@@ -220,6 +279,13 @@
           origin: event.origin,
           timestamp: Date.now(),
         });
+
+          /* Push default GA/GTM form event */
+          pushDataLayer('form_submit', {
+            community: meta.community || config.communityName,
+            marketSource: meta.marketSource || config.marketSource,
+            referrer: meta.referrer || window.location.href,
+          });
       }
       
       // Handle form errors
@@ -238,6 +304,22 @@
           error: data.error,
           timestamp: Date.now(),
         });
+      }
+
+      // Handle host-page redirect instructions
+      if (data.type === 'redirect' && data.url) {
+        try {
+          const redirectUrl = data.url;
+          // absolute if starts with http/https OR explicit mode === 'absolute'
+          if (data.mode === 'absolute' || /^https?:\/\//i.test(redirectUrl)) {
+            window.location.href = redirectUrl;
+          } else {
+            // treat as suffix / relative path
+            window.location.href = redirectUrl;
+          }
+        } catch (err) {
+          logger.error('Failed to process redirect message', err);
+        }
       }
 
       // Handle first interaction events

@@ -13,13 +13,14 @@
     "build-widget": "node scripts/build-widget.js"
   },
   "dependencies": {
+    "@hookform/resolvers": "^3.3.1",
+    "axios": "^1.5.0",
+    "framer-motion": "^10.18.0",
     "next": "^13.4.19",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.45.4",
-    "axios": "^1.5.0",
-    "yup": "^1.2.0",
-    "@hookform/resolvers": "^3.3.1"
+    "yup": "^1.2.0"
   },
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.4",
